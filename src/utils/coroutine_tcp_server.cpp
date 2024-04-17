@@ -44,9 +44,10 @@ coroutine_tcp_server::~coroutine_tcp_server() {}
 int coroutine_tcp_server::start(short port,int hint) {
 
     std::condition_variable cv;
+    std::mutex mtx;
+    bool started = false;
     std::shared_ptr<boost::asio::io_context> ioc = std::make_shared<boost::asio::io_context>(hint);
     std::unique_ptr<std::thread> th = std::make_unique<std::thread>([&,port,ioc]() {
-
         co_spawn(*ioc,[&]() -> awaitable<void> {
             tcp::acceptor acceptor4(*ioc, tcp::endpoint(tcp::v4(), port));
             for (;;) {
@@ -71,22 +72,26 @@ int coroutine_tcp_server::start(short port,int hint) {
         //     }
         // } , detached);
 
+
+        
         log_info("TCP Server [" + std::to_string(port) + "] 已启动");
+        started = true;
+        cv.notify_one();
         ioc->run();
         log_info("TCP Server [" + std::to_string(port) + "] 已停止");
     });
 
-    std::mutex mtx;
     std::unique_lock<std::mutex> lock(mtx);
-    if (!cv.wait_for(lock, std::chrono::milliseconds(5000),[]() { return false; })) {
+    if (cv.wait_for(lock, std::chrono::seconds(3),[&]() { return started; })) {
+        log_info("TCP Server [" + std::to_string(port) + "] 启动成功");
+        io_context = std::move(ioc);
+        thread = std::move(th);
+        return 0;
+    } else {
         log_info("TCP Server [" + std::to_string(port) + "] 启动超时");
         ioc->stop();
         th->join();
         return -1;
-    } else {
-        io_context = std::move(ioc);
-        thread = std::move(th);
-        return 0;
     }
 }
 
