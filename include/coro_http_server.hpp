@@ -1,10 +1,9 @@
-#ifndef __COROUTINE_HTTP_SERVER_H_
-#define __COROUTINE_HTTP_SERVER_H_
+#ifndef __coro_HTTP_SERVER_H_
+#define __coro_HTTP_SERVER_H_
 
 #include <iostream>
 #include <boost/asio.hpp>
 #include <boost/beast/core.hpp>
-#include <boost/beast/http.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
 #include <boost/asio/spawn.hpp>
@@ -22,7 +21,7 @@ typedef std::function<awaitable<http::response<http::string_body>>(tcp::socket& 
 typedef std::unordered_map<http::verb, HttpFunction> HttpMethods;
 typedef std::unordered_map<std::string, HttpMethods> HttpRoute;
 
-class coroutine_http_server {
+class coro_http_server {
 private:
     bool keepAlive;
     HttpRoute routes;
@@ -30,14 +29,14 @@ private:
     std::shared_ptr<std::thread> thread;
 
 public:
-    coroutine_http_server(bool isKeepAlive): keepAlive(isKeepAlive) {};
-    ~coroutine_http_server() {};
+    coro_http_server(bool isKeepAlive): keepAlive(isKeepAlive) {};
+    ~coro_http_server() {};
 
     int start(short port,int hint);
     void stop();
     awaitable<void> session_handler(tcp::socket socket);
     void add(http::verb method, std::string path, HttpFunction function);
 
-    static coroutine_http_server getTestInstance();
+    static coro_http_server getTestInstance();
 };
 #endif

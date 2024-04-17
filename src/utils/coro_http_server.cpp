@@ -1,7 +1,7 @@
 
 #include <thread>
 
-#include "coroutine_http_server.hpp"
+#include "coro_http_server.hpp"
 #include "log.hpp"
 
 using namespace boost::beast;
@@ -48,7 +48,7 @@ static std::vector<std::string> split(const std::string& str, char delimiter) {
     tokens.push_back(str.substr(start));
     return tokens;
 }
-awaitable<void> coroutine_http_server::session_handler(tcp::socket socket) {
+awaitable<void> coro_http_server::session_handler(tcp::socket socket) {
     flat_buffer buffer;
     try {
         for (;;) {
@@ -99,7 +99,7 @@ awaitable<void> coroutine_http_server::session_handler(tcp::socket socket) {
     co_return;
 }
 
-int coroutine_http_server::start(short port,int hint) {
+int coro_http_server::start(short port,int hint) {
     
     std::condition_variable cv;
     std::mutex mtx;
@@ -145,7 +145,7 @@ int coroutine_http_server::start(short port,int hint) {
     }
 }
 
-void coroutine_http_server::stop() {
+void coro_http_server::stop() {
     log_info("正在关闭服务");
     if (io_context != nullptr && thread != nullptr && thread->joinable()) {
         io_context->stop();
@@ -156,7 +156,7 @@ void coroutine_http_server::stop() {
     }
 }
 
-void coroutine_http_server::add(http::verb method, std::string path, HttpFunction function) {
+void coro_http_server::add(http::verb method, std::string path, HttpFunction function) {
     auto methods = this->routes.find(path);
     if (methods == this->routes.end()) {
         this->routes[path][method] = function;
@@ -171,8 +171,8 @@ void coroutine_http_server::add(http::verb method, std::string path, HttpFunctio
     }
 }\
 
-coroutine_http_server coroutine_http_server::getTestInstance() {
-    static coroutine_http_server httpd(100);
+coro_http_server coro_http_server::getTestInstance() {
+    static coro_http_server httpd(100);
     httpd.add(http::verb::get, "/", 
             [](auto& socket,auto& request) -> awaitable<http::response<http::string_body>> {
 

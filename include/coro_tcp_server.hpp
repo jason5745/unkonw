@@ -1,5 +1,5 @@
-#ifndef __COROUTINE_TCP_SERVER_H_
-#define __COROUTINE_TCP_SERVER_H_
+#ifndef __coro_TCP_SERVER_H_
+#define __coro_TCP_SERVER_H_
 
 #include <thread>
 #include <boost/asio/co_spawn.hpp>
@@ -15,7 +15,7 @@ using boost::asio::co_spawn;
 using boost::asio::detached;
 using boost::asio::use_awaitable;
 
-class coroutine_tcp_server {
+class coro_tcp_server {
 private:
     std::function<awaitable<void>(tcp::socket&)> on_connected_handle;
     std::function<awaitable<void>(tcp::socket&,const char *,size_t)> on_message_handle;
@@ -25,16 +25,16 @@ private:
     std::shared_ptr<std::thread> thread;
 public:
 
-    coroutine_tcp_server(
+    coro_tcp_server(
         std::function<awaitable<void>(tcp::socket&)> on_connected_handle,
         std::function<awaitable<void>(tcp::socket&,const char *,size_t)> on_message_handle,
         std::function<awaitable<void>(tcp::socket&)> on_disconnected_handle);
 
-    ~coroutine_tcp_server();
+    ~coro_tcp_server();
     
     int start(short port,int hint);
     void stop();
 
-    static coroutine_tcp_server getTestInstance();
+    static coro_tcp_server getTestInstance();
 };
 #endif

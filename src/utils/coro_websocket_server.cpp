@@ -1,18 +1,18 @@
 
-
 #include <condition_variable>
-#include "coroutine_tcp_server.hpp"
+#include <boost/asio/spawn.hpp>
+#include "coro_websocket_server.hpp"
 #include "log.hpp"
 
-awaitable<void> handle(tcp::socket socket,
-    std::function<awaitable<void>(tcp::socket&)> on_connected_handle,
-    std::function<awaitable<void>(tcp::socket&,const char *,size_t)> on_message_handle,
-    std::function<awaitable<void>(tcp::socket&)> on_disconnected_handle) {
+namespace websocket = boost::beast::websocket;
+
+awaitable<void> coro_websocket_server::session_handler(tcp::socket socket_) {
+    boost::beast::websocket::stream<tcp::socket> socket(std::move(socket_));
     char data[4096];
+    co_await socket.async_accept(use_awaitable);
     if (on_connected_handle != nullptr) {
         co_await on_connected_handle(socket);
     }
-
     try {
         for (;;) {
             std::size_t n = co_await socket.async_read_some(boost::asio::buffer(data), use_awaitable);
@@ -22,38 +22,40 @@ awaitable<void> handle(tcp::socket socket,
         }
     } catch (boost::system::system_error & ex1) {
     } catch (std::exception& ex0) {
-        log_warn("" << ex0.what());
+        log_warn(ex0.what());
     }
 
     if (on_disconnected_handle != nullptr) {
         co_await on_disconnected_handle(socket);
     }
+    co_return;
 }
 
-coroutine_tcp_server::coroutine_tcp_server(
-    std::function<awaitable<void>(tcp::socket&)> on_connected_handle,
-    std::function<awaitable<void>(tcp::socket&,const char *,size_t)> on_message_handle,
-    std::function<awaitable<void>(tcp::socket&)> on_disconnected_handle) {
+coro_websocket_server::coro_websocket_server(
+    std::function<awaitable<void>(websocket::stream<tcp::socket>&)> on_connected_handle,
+    std::function<awaitable<void>(websocket::stream<tcp::socket>&,const char *,size_t)> on_message_handle,
+    std::function<awaitable<void>(websocket::stream<tcp::socket>&)> on_disconnected_handle) {
 
     this->on_connected_handle = on_connected_handle;
     this->on_message_handle = on_message_handle;
     this->on_disconnected_handle = on_disconnected_handle;
 }
-coroutine_tcp_server::~coroutine_tcp_server() {}
 
-int coroutine_tcp_server::start(short port,int hint) {
+coro_websocket_server::~coro_websocket_server() {}
+
+int coro_websocket_server::start(short port,int hint) {
 
     std::condition_variable cv;
     std::mutex mtx;
     bool started = false;
     std::shared_ptr<boost::asio::io_context> ioc = std::make_shared<boost::asio::io_context>(hint);
+
     std::shared_ptr<std::thread> t = std::make_shared<std::thread>([&,port,ioc]() {
         co_spawn(*ioc,[&]() -> awaitable<void> {
             tcp::acceptor acceptor4(*ioc, tcp::endpoint(tcp::v4(), port));
             for (;;) {
                 tcp::socket socket = co_await acceptor4.async_accept(use_awaitable);
-                log_info("IPv4 接入一个新连接");
-                co_spawn(socket.get_executor(), handle(std::move(socket),on_connected_handle,on_message_handle,on_disconnected_handle), detached);
+                co_spawn(acceptor4.get_executor(),this->session_handler(std::move(socket)),detached);
             }
         } , detached);
 
@@ -66,7 +68,7 @@ int coroutine_tcp_server::start(short port,int hint) {
         // co_spawn(*ioc,[&]() -> awaitable<void> {
         //     tcp::acceptor acceptor6(*ioc, tcp::endpoint(tcp::v6(), port));
         //     for (;;) {
-        //         tcp::socket socket = co_await acceptor6.async_accept(use_awaitable);
+        //         websocket::stream<tcp::socket> socket = co_await acceptor6.async_accept(use_awaitable);
         //         log_info("IPv6 接入一个新连接");
         //         co_spawn(socket.get_executor(), handle(std::move(socket),on_connected_handle,on_message_handle,on_disconnected_handle), detached);
         //     }
@@ -95,7 +97,7 @@ int coroutine_tcp_server::start(short port,int hint) {
     }
 }
 
-void coroutine_tcp_server::stop() {
+void coro_websocket_server::stop() {
     log_info("正在关闭服务");
     if (io_context != nullptr && thread != nullptr && thread->joinable()) {
         io_context->stop();
@@ -106,43 +108,34 @@ void coroutine_tcp_server::stop() {
     }
 }
 
-static std::string ByteToHexString(const char* data, size_t length) {
-    std::stringstream ss;
-    ss << std::hex << std::setfill('0');
-    for (size_t i = 0; i < length; ++i) {
-        ss << std::setw(2) << static_cast<int>(static_cast<unsigned char>(data[i]));
-    }
-    return ss.str();
-}
-
-coroutine_tcp_server coroutine_tcp_server::getTestInstance() {
-    static coroutine_tcp_server tcpd(
-        [] (tcp::socket &socket) -> awaitable<void> {
-            log_info(socket.remote_endpoint().address().to_string() 
-                << ":" 
-                << socket.remote_endpoint().port() 
-                << " 已连接");
+coro_websocket_server coro_websocket_server::getTestInstance() {
+    static coro_websocket_server wsd(
+        [](websocket::stream<tcp::socket> &socket) -> awaitable<void> {
+            // log_info(socket.remote_endpoint().address().to_string() 
+            //     << ":" 
+            //     << socket.remote_endpoint().port() 
+            //     << " 已连接");
             co_return;
         },
-        [](tcp::socket &socket,const char * data,size_t size) -> awaitable<void> {
-            log_info(socket.remote_endpoint().address().to_string()
-                << ":"
-                << socket.remote_endpoint().port() 
-                << " 收到数据: " << ByteToHexString(data,size));
-
-            co_await socket.async_write_some(boost::asio::buffer(data, size),use_awaitable);
+        [](websocket::stream<tcp::socket> &socket,const char * data,size_t size) -> awaitable<void> {
+            // log_info(socket.remote_endpoint().address().to_string()
+            //     << ":"
+            //     << socket.remote_endpoint().port() 
+            //     << " 收到数据: " << ByteToHexString(data,size));
+            //socket.
+            co_await socket.async_write(boost::asio::buffer(data, size),use_awaitable);
             log_info("数据已发送");
             co_return;
         },
-        [](tcp::socket &socket) -> awaitable<void> {
-            log_info(socket.remote_endpoint().address().to_string() 
-                << ":" 
-                << socket.remote_endpoint().port() 
-                << " 已断开");
+        [](websocket::stream<tcp::socket> &socket) -> awaitable<void> {
+            // log_info(socket.remote_endpoint().address().to_string() 
+            //     << ":" 
+            //     << socket.remote_endpoint().port() 
+            //     << " 已断开");
             co_return;
         }
     );
-    tcpd.start(10085,1);
+    wsd.start(10082,1);
     sleep(1);
-    return std::move(tcpd);
+    return std::move(wsd);
 }
