@@ -99,35 +99,61 @@ awaitable<void> coroutine_http_server::session_handler(tcp::socket socket) {
     co_return;
 }
 
-void coroutine_http_server::start(short port) {
-    io_context = std::make_shared<boost::asio::io_context>(concurrency_hint);
-    thread = std::make_shared<std::thread>([=]() {
-        tcp::acceptor acceptor4(*io_context, tcp::endpoint(tcp::v4(), port));
-        co_spawn(*io_context,[&]() -> awaitable<void> {
+int coroutine_http_server::start(short port,int hint) {
+    
+    std::condition_variable cv;
+    std::mutex mtx;
+    bool started = false;
+    
+    std::shared_ptr<boost::asio::io_context> ioc = std::make_shared<boost::asio::io_context>(hint);
+    std::shared_ptr<std::thread> t = std::make_shared<std::thread>([&,port,ioc]() {
+        
+        co_spawn(*ioc,[&]() -> awaitable<void> {
+            tcp::acceptor acceptor4(*ioc, tcp::endpoint(tcp::v4(), port));
             for (;;) {
                 tcp::socket socket = co_await acceptor4.async_accept(use_awaitable);
                 co_spawn(socket.get_executor(), this->session_handler(std::move(socket)), detached);
             }
         } , detached);
-
-
-        // tcp::acceptor acceptor6(*io_context, tcp::endpoint(tcp::v6(), port));
-        // co_spawn(*io_context,[&]() -> awaitable<void> {
+    
+        // co_spawn(*ioc,[&]() -> awaitable<void> {
+        // tcp::acceptor acceptor6(*ioc, tcp::endpoint(tcp::v6(), port));
         //     for (;;) {
         //         tcp::socket socket = co_await acceptor6.async_accept(use_awaitable);
         //         co_spawn(socket.get_executor(), this->session_handler(std::move(socket)), detached);
         //     }
         // } , detached);
+        
         log_info("HTTP Server [" + std::to_string(port) + "] 已启动");
-        io_context->run();
+        started = true;
+        cv.notify_one();
+        ioc->run();
+        log_info("HTTP Server [" + std::to_string(port) + "] 已停止");
     });
+
+    std::unique_lock<std::mutex> lock(mtx);
+    if (cv.wait_for(lock, std::chrono::seconds(3),[&]() { return started; })) {
+        log_info("HTTP Server [" + std::to_string(port) + "] 启动成功");
+        io_context = std::move(ioc);
+        thread = std::move(t);
+        return 0;
+    } else {
+        log_info("HTTP Server [" + std::to_string(port) + "] 启动超时");
+        ioc->stop();
+        t->join();
+        return -1;
+    }
 }
 
 void coroutine_http_server::stop() {
     log_info("正在关闭服务");
-    io_context->stop();
-    thread->join();
-    log_info("已关闭服务");
+    if (io_context != nullptr && thread != nullptr && thread->joinable()) {
+        io_context->stop();
+        thread->join();
+        log_info("已关闭服务");
+    } else {
+        log_error("服务未启动");
+    }
 }
 
 void coroutine_http_server::add(http::verb method, std::string path, HttpFunction function) {
@@ -143,23 +169,26 @@ void coroutine_http_server::add(http::verb method, std::string path, HttpFunctio
             functions->second = function;
         }
     }
-}
-static void test() {
+}\
 
-    coroutine_http_server httpd(1);
+coroutine_http_server coroutine_http_server::getTestInstance() {
+    static coroutine_http_server httpd(100);
     httpd.add(http::verb::get, "/", 
-            [](tcp::socket& socket,http::request<http::string_body> request) -> awaitable<http::response<http::string_body>> {
+            [](auto& socket,auto& request) -> awaitable<http::response<http::string_body>> {
 
-            http::response<http::string_body> response = http::response<http::string_body>{http::status::not_found, request.version()};
+            http::response<http::string_body> response = http::response<http::string_body>{ http::status::ok, request.version() };
             response.version(request.version());
             response.result(http::status::ok);
+            response.body() = "Hello World";
+
             response.set(http::field::server, BOOST_BEAST_VERSION_STRING);
             response.set(http::field::content_type, "text/html");
             response.keep_alive(request.keep_alive());
+            response.prepare_payload();
             co_return response;
         }
     );
-    httpd.start(10086);
-    sleep(60 * 60);
-    httpd.stop();
+    httpd.start(10086,100);
+    sleep(1);
+    return std::move(httpd);
 }

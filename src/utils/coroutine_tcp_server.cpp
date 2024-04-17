@@ -47,7 +47,7 @@ int coroutine_tcp_server::start(short port,int hint) {
     std::mutex mtx;
     bool started = false;
     std::shared_ptr<boost::asio::io_context> ioc = std::make_shared<boost::asio::io_context>(hint);
-    std::unique_ptr<std::thread> th = std::make_unique<std::thread>([&,port,ioc]() {
+    std::shared_ptr<std::thread> t = std::make_shared<std::thread>([&,port,ioc]() {
         co_spawn(*ioc,[&]() -> awaitable<void> {
             tcp::acceptor acceptor4(*ioc, tcp::endpoint(tcp::v4(), port));
             for (;;) {
@@ -85,26 +85,38 @@ int coroutine_tcp_server::start(short port,int hint) {
     if (cv.wait_for(lock, std::chrono::seconds(3),[&]() { return started; })) {
         log_info("TCP Server [" + std::to_string(port) + "] 启动成功");
         io_context = std::move(ioc);
-        thread = std::move(th);
+        thread = std::move(t);
         return 0;
     } else {
         log_info("TCP Server [" + std::to_string(port) + "] 启动超时");
         ioc->stop();
-        th->join();
+        t->join();
         return -1;
     }
 }
 
 void coroutine_tcp_server::stop() {
+    log_info("正在关闭服务");
     if (io_context != nullptr && thread != nullptr && thread->joinable()) {
         io_context->stop();
         thread->join();
+        log_info("已关闭服务");
     } else {
         log_error("服务未启动");
     }
 }
-void test() {
-    coroutine_tcp_server server(
+
+static std::string ByteToHexString(const char* data, size_t length) {
+    std::stringstream ss;
+    ss << std::hex << std::setfill('0');
+    for (size_t i = 0; i < length; ++i) {
+        ss << std::setw(2) << static_cast<int>(static_cast<unsigned char>(data[i]));
+    }
+    return ss.str();
+}
+
+coroutine_tcp_server coroutine_tcp_server::getTestInstance() {
+    static coroutine_tcp_server tcpd(
         [] (tcp::socket &socket) -> awaitable<void> {
             log_info(socket.remote_endpoint().address().to_string() 
                 << ":" 
@@ -113,12 +125,13 @@ void test() {
             co_return;
         },
         [](tcp::socket &socket,const char * data,size_t size) -> awaitable<void> {
-            log_info(socket.remote_endpoint().address().to_string() 
-                << ":" 
+            log_info(socket.remote_endpoint().address().to_string()
+                << ":"
                 << socket.remote_endpoint().port() 
-                << " 收到数据");
-            // co_await socket.async_write_some(boost::asio::buffer(data, size),use_awaitable);
-            // log_info("数据已发送");
+                << " 收到数据: " << ByteToHexString(data,size));
+
+            co_await socket.async_write_some(boost::asio::buffer(data, size),use_awaitable);
+            log_info("数据已发送");
             co_return;
         },
         [](tcp::socket &socket) -> awaitable<void> {
@@ -129,7 +142,7 @@ void test() {
             co_return;
         }
     );
-    server.start(10086,1);
-    sleep(60 * 60);
-    server.stop();
+    tcpd.start(10085,1);
+    sleep(1);
+    return std::move(tcpd);
 }
