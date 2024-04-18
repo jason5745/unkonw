@@ -26,9 +26,28 @@ private:
     bool keepAlive;
     HttpRoute routes;
     std::shared_ptr<boost::asio::io_context> io_context;
-    std::shared_ptr<std::thread> thread;
+    std::unique_ptr<std::thread> thread;
 
 public:
+    coro_http_server(coro_http_server&& other) {
+        io_context = std::move(other.io_context);
+        routes = std::move(other.routes);
+        thread = std::move(other.thread);
+        keepAlive = other.keepAlive;
+        other.keepAlive = 0;
+    }
+
+    coro_http_server& operator=(coro_http_server&& other) {
+        if (this != &other) {
+            io_context = std::move(other.io_context);
+            routes = std::move(other.routes);
+            thread = std::move(other.thread);
+            keepAlive = other.keepAlive;
+            other.keepAlive = 0;
+        }
+        return *this;
+    }
+
     coro_http_server(bool isKeepAlive): keepAlive(isKeepAlive) {};
     ~coro_http_server() {};
 
@@ -37,6 +56,6 @@ public:
     awaitable<void> session_handler(tcp::socket socket);
     void add(http::verb method, std::string path, HttpFunction function);
 
-    static coro_http_server getTestInstance();
+    static coro_http_server&& getTestInstance();
 };
 #endif

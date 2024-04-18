@@ -46,15 +46,17 @@ static std::vector<std::string> split(const std::string& str, char delimiter) {
         start = end + 1;
     }
     tokens.push_back(str.substr(start));
-    return tokens;
+    return std::move(tokens);
 }
+static boost::beast::flat_buffer buffer;
 awaitable<void> coro_http_server::session_handler(tcp::socket socket) {
-    flat_buffer buffer;
     try {
         for (;;) {
             http::request<http::string_body> request;
             co_await http::async_read(socket, buffer, request, use_awaitable);
             auto tokens = split(request.target(),'?');
+            
+            //request.target
             if (tokens.size() > 0) {
                 auto methods = routes.find(tokens[0]);
                 if (methods != routes.end()) {
@@ -106,8 +108,8 @@ int coro_http_server::start(short port,int hint) {
     bool started = false;
     
     std::shared_ptr<boost::asio::io_context> ioc = std::make_shared<boost::asio::io_context>(hint);
-    std::shared_ptr<std::thread> t = std::make_shared<std::thread>([&,port,ioc]() {
-        
+
+    std::unique_ptr<std::thread> t = std::make_unique<std::thread>([&,port,ioc]() {
         co_spawn(*ioc,[&]() -> awaitable<void> {
             tcp::acceptor acceptor4(*ioc, tcp::endpoint(tcp::v4(), port));
             for (;;) {
@@ -171,7 +173,7 @@ void coro_http_server::add(http::verb method, std::string path, HttpFunction fun
     }
 }\
 
-coro_http_server coro_http_server::getTestInstance() {
+coro_http_server&& coro_http_server::getTestInstance() {
     static coro_http_server httpd(100);
     httpd.add(http::verb::get, "/", 
             [](auto& socket,auto& request) -> awaitable<http::response<http::string_body>> {
@@ -189,6 +191,5 @@ coro_http_server coro_http_server::getTestInstance() {
         }
     );
     httpd.start(10086,100);
-    sleep(1);
     return std::move(httpd);
 }

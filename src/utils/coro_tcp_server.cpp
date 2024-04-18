@@ -5,10 +5,7 @@
 #include "coro_tcp_server.hpp"
 #include "log.hpp"
 
-awaitable<void> handle(tcp::socket socket,
-    std::function<awaitable<void>(tcp::socket&)> on_connected_handle,
-    std::function<awaitable<void>(tcp::socket&,const char *,size_t)> on_message_handle,
-    std::function<awaitable<void>(tcp::socket&)> on_disconnected_handle) {
+awaitable<void> coro_tcp_server::session_handler(tcp::socket socket) {
     char data[4096];
     if (on_connected_handle != nullptr) {
         co_await on_connected_handle(socket);
@@ -48,33 +45,25 @@ int coro_tcp_server::start(short port,int hint) {
     std::mutex mtx;
     bool started = false;
     std::shared_ptr<boost::asio::io_context> ioc = std::make_shared<boost::asio::io_context>(hint);
-    std::shared_ptr<std::thread> t = std::make_shared<std::thread>([&,port,ioc]() {
+    std::unique_ptr<std::thread> t = std::make_unique<std::thread>([&,ioc]() {
         co_spawn(*ioc,[&]() -> awaitable<void> {
             tcp::acceptor acceptor4(*ioc, tcp::endpoint(tcp::v4(), port));
             for (;;) {
                 tcp::socket socket = co_await acceptor4.async_accept(use_awaitable);
                 log_info("IPv4 接入一个新连接");
-                co_spawn(socket.get_executor(), handle(std::move(socket),on_connected_handle,on_message_handle,on_disconnected_handle), detached);
+                co_spawn(socket.get_executor(), session_handler(std::move(socket)), detached);
             }
         } , detached);
 
-        try {
-            
-        } catch (std::exception& ex0) {
-            log_info(ex0.what());
-        }
-        
         // co_spawn(*ioc,[&]() -> awaitable<void> {
-        //     tcp::acceptor acceptor6(*ioc, tcp::endpoint(tcp::v6(), port));
+        //     tcp::acceptor acceptor4(*ioc, tcp::endpoint(tcp::v6(), port));
         //     for (;;) {
-        //         tcp::socket socket = co_await acceptor6.async_accept(use_awaitable);
-        //         log_info("IPv6 接入一个新连接");
-        //         co_spawn(socket.get_executor(), handle(std::move(socket),on_connected_handle,on_message_handle,on_disconnected_handle), detached);
+        //         tcp::socket socket = co_await acceptor4.async_accept(use_awaitable);
+        //         log_info("IPv4 接入一个新连接");
+        //         co_spawn(socket.get_executor(), session_handler(std::move(socket)), detached);
         //     }
         // } , detached);
 
-
-        
         log_info("TCP Server [" + std::to_string(port) + "] 已启动");
         started = true;
         cv.notify_one();
@@ -116,7 +105,7 @@ static std::string ByteToHexString(const char* data, size_t length) {
     return ss.str();
 }
 
-coro_tcp_server coro_tcp_server::getTestInstance() {
+coro_tcp_server&& coro_tcp_server::getTestInstance() {
     static coro_tcp_server tcpd(
         [] (tcp::socket &socket) -> awaitable<void> {
             log_info(socket.remote_endpoint().address().to_string() 
@@ -144,6 +133,5 @@ coro_tcp_server coro_tcp_server::getTestInstance() {
         }
     );
     tcpd.start(10085,1);
-    sleep(1);
     return std::move(tcpd);
 }

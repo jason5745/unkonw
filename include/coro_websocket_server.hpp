@@ -6,7 +6,6 @@
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/beast.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/version.hpp>
 #include <boost/beast/websocket.hpp>

@@ -13,9 +13,20 @@ set(CMAKE_BUILD_TYPE Debug)
 include_directories(include)
 
 #Boost
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../boost/include)
-set(BOOST_LIBRARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../boost/lib")
-file(GLOB BOOST_LIBRARY_FILES "${BOOST_LIBRARY_DIR}/*.so" "${BOOST_LIBRARY_DIR}/*.a")
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    message(STATUS "Running on Linux")
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../boost/include)
+    set(BOOST_LIBRARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../boost/lib")
+    file(GLOB BOOST_LIBRARY_FILES "${BOOST_LIBRARY_DIR}/*.so" "${BOOST_LIBRARY_DIR}/*.a")
+elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+    message(STATUS "Running on Mac OS X")
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../boost/include)
+    set(BOOST_LIBRARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../boost/lib")
+    file(GLOB BOOST_LIBRARY_FILES "${BOOST_LIBRARY_DIR}/*.dylib" "${BOOST_LIBRARY_DIR}/*.a")
+else()
+    message(STATUS "Running on another system: ${CMAKE_SYSTEM_NAME}")
+endif()
+
 
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

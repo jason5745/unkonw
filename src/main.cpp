@@ -4,10 +4,8 @@
 #include "coro_websocket_server.hpp"
 #include "log.hpp"
 
-
 int main(int argc, char **argv) {
     logger::configure(boost::log::trivial::trace, 1);
-    
     coro_http_server httpd = coro_http_server::getTestInstance();
     coro_tcp_server tcpd = coro_tcp_server::getTestInstance();
     coro_websocket_server wsd = coro_websocket_server::getTestInstance();
@@ -15,6 +13,6 @@ int main(int argc, char **argv) {
     sleep(3600);
     tcpd.stop();
     httpd.stop();
-
+    wsd.stop();
     return 0;
 }

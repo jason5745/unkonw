@@ -1,32 +1,46 @@
 
 #include <condition_variable>
-#include <boost/asio/spawn.hpp>
 #include "coro_websocket_server.hpp"
 #include "log.hpp"
 
 namespace websocket = boost::beast::websocket;
+namespace http = boost::beast::http;
 
-awaitable<void> coro_websocket_server::session_handler(tcp::socket socket_) {
-    boost::beast::websocket::stream<tcp::socket> socket(std::move(socket_));
-    char data[4096];
-    co_await socket.async_accept(use_awaitable);
-    if (on_connected_handle != nullptr) {
-        co_await on_connected_handle(socket);
+static boost::beast::flat_buffer buffer;
+awaitable<void> coro_websocket_server::session_handler(tcp::socket socket) {
+    bool isConnected = false;
+    http::request<http::string_body> request;
+    try {   //判断是否为Websocket握手请求
+        co_await http::async_read(socket, buffer, request, use_awaitable);
+        if (!websocket::is_upgrade(request)) co_return;
+            //TODO: check websocket
+
+    } catch (std::exception& ex0) {
+        log_warn(ex0.what());
+        co_return;
     }
+
+    websocket::stream<tcp::socket> client(std::move(socket));
     try {
+        log_info(request.target());
+        co_await client.async_accept(request, use_awaitable);
+        
+        isConnected = true;
+        if (on_connected_handle != nullptr) {
+            co_await on_connected_handle(client);
+        }
         for (;;) {
-            std::size_t n = co_await socket.async_read_some(boost::asio::buffer(data), use_awaitable);
+            std::size_t n = co_await client.async_read(buffer, use_awaitable);
             if (on_message_handle != nullptr) {
-                co_await on_message_handle(socket, data, n);
+                co_await on_message_handle(client, (char *)buffer.cdata().data(), buffer.cdata().size());
             }
         }
     } catch (boost::system::system_error & ex1) {
     } catch (std::exception& ex0) {
         log_warn(ex0.what());
     }
-
-    if (on_disconnected_handle != nullptr) {
-        co_await on_disconnected_handle(socket);
+    if (isConnected && on_disconnected_handle != nullptr) {
+        co_await on_disconnected_handle(client);
     }
     co_return;
 }
@@ -51,16 +65,15 @@ int coro_websocket_server::start(short port,int hint) {
     std::shared_ptr<boost::asio::io_context> ioc = std::make_shared<boost::asio::io_context>(hint);
 
     std::shared_ptr<std::thread> t = std::make_shared<std::thread>([&,port,ioc]() {
-        co_spawn(*ioc,[&]() -> awaitable<void> {
-            tcp::acceptor acceptor4(*ioc, tcp::endpoint(tcp::v4(), port));
-            for (;;) {
-                tcp::socket socket = co_await acceptor4.async_accept(use_awaitable);
-                co_spawn(acceptor4.get_executor(),this->session_handler(std::move(socket)),detached);
-            }
-        } , detached);
 
         try {
-            
+            co_spawn(*ioc,[&]() -> awaitable<void> {
+                tcp::acceptor acceptor4(*ioc, tcp::endpoint(tcp::v4(), port));
+                for (;;) {
+                    tcp::socket socket = co_await acceptor4.async_accept(use_awaitable);
+                    co_spawn(socket.get_executor(),this->session_handler(std::move(socket)),detached);
+                }
+            } , detached);
         } catch (std::exception& ex0) {
             log_info(ex0.what());
         }
@@ -111,6 +124,7 @@ void coro_websocket_server::stop() {
 coro_websocket_server coro_websocket_server::getTestInstance() {
     static coro_websocket_server wsd(
         [](websocket::stream<tcp::socket> &socket) -> awaitable<void> {
+            
             // log_info(socket.remote_endpoint().address().to_string() 
             //     << ":" 
             //     << socket.remote_endpoint().port() 
@@ -136,6 +150,5 @@ coro_websocket_server coro_websocket_server::getTestInstance() {
         }
     );
     wsd.start(10082,1);
-    sleep(1);
     return std::move(wsd);
 }
