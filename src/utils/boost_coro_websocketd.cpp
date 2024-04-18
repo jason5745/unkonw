@@ -1,8 +1,14 @@
 
-#include <condition_variable>
-#include "coro_websocket_server.hpp"
-#include "log.hpp"
 
+
+#include <condition_variable>
+#include <boost/url/url.hpp>
+#include "boost_coro_websocketd.h"
+#include "boost_log.h"
+
+using boost::asio::co_spawn;
+using boost::asio::detached;
+using boost::asio::use_awaitable;
 namespace websocket = boost::beast::websocket;
 namespace http = boost::beast::http;
 
@@ -14,7 +20,8 @@ awaitable<void> coro_websocket_server::session_handler(tcp::socket socket) {
         co_await http::async_read(socket, buffer, request, use_awaitable);
         if (!websocket::is_upgrade(request)) co_return;
             //TODO: check websocket
-
+            boost::urls::url url(request.target());
+            
     } catch (std::exception& ex0) {
         log_warn(ex0.what());
         co_return;

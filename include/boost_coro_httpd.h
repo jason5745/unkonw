@@ -1,12 +1,10 @@
-#ifndef __coro_HTTP_SERVER_H_
-#define __coro_HTTP_SERVER_H_
+#ifndef __BOOST_CORO_HTTPD_H_
+#define __BOOST_CORO_HTTPD_H_
 
-#include <iostream>
 #include <boost/asio.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
-#include <boost/asio/spawn.hpp>
 #include <unordered_map>
 
 using boost::asio::ip::tcp;

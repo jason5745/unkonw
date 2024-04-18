@@ -1,17 +1,12 @@
-#ifndef LOGGER_H
-#define LOGGER_H
+#ifndef __BOOST_LOGGER_H_
+#define __BOOST_LOGGER_H_
 
-#include <stdexcept>
+
 #include <string>
-#include <iostream>
-#include <fstream>
 
 #include <boost/log/common.hpp>
 #include <boost/log/sinks.hpp>
-#include <boost/log/sources/logger.hpp>
 #include <boost/log/trivial.hpp>
-#include <boost/log/attributes/named_scope.hpp>
-
 
 #define log_trace(message) BOOST_LOG_SEV(logger::instance()._logger,boost::log::trivial::trace) << __FILE__ << ":" << __LINE__ << " " << message
 #define log_debug(message) BOOST_LOG_SEV(logger::instance()._logger,boost::log::trivial::debug) << __FILE__ << ":" << __LINE__ << " " << message

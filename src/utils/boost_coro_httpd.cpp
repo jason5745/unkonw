@@ -1,8 +1,9 @@
 
 #include <thread>
+#include <boost/url/url.hpp>
+#include "boost_coro_httpd.h"
+#include "boost_log.h"
 
-#include "coro_http_server.hpp"
-#include "log.hpp"
 
 using namespace boost::beast;
 
@@ -54,31 +55,18 @@ awaitable<void> coro_http_server::session_handler(tcp::socket socket) {
         for (;;) {
             http::request<http::string_body> request;
             co_await http::async_read(socket, buffer, request, use_awaitable);
-            auto tokens = split(request.target(),'?');
+            boost::urls::url url(request.target());
             
-            //request.target
-            if (tokens.size() > 0) {
-                auto methods = routes.find(tokens[0]);
-                if (methods != routes.end()) {
-                    auto function = methods->second.find(request.method());
-                    if (function != methods->second.end()) {
-                        http::response<http::string_body> response = co_await function->second(socket,request);
-                        co_await http::async_write(socket, response, use_awaitable);
-                    } else { 
-                        //NOT_MODIFIED
-                        log_trace("Method: " << request.method() << " Url: " << request.target() << " NOT_MODIFIED");
-                        http::response<http::string_body> response = http::response<http::string_body>{http::status::not_modified, request.version()};
-                        response.version(request.version());
-                        response.result(http::status::ok);
-                        response.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-                        response.set(http::field::content_type, "text/html");
-                        response.keep_alive(request.keep_alive());
-                        co_await http::async_write(socket, response, use_awaitable);
-                    }
-                } else {
-                    //NOT_FOUND
-                    log_trace("Method: " << request.method() << " Url: " << request.target() << " NOT_FOUND");
-                    http::response<http::string_body> response = http::response<http::string_body>{http::status::not_found, request.version()};
+            auto methods = routes.find(url.path());
+            if (methods != routes.end()) {
+                auto function = methods->second.find(request.method());
+                if (function != methods->second.end()) {
+                    http::response<http::string_body> response = co_await function->second(socket,request);
+                    co_await http::async_write(socket, response, use_awaitable);
+                } else { 
+                    //NOT_MODIFIED
+                    log_trace("Method: " << request.method() << " Url: " << request.target() << " NOT_MODIFIED");
+                    http::response<http::string_body> response = http::response<http::string_body>{http::status::not_modified, request.version()};
                     response.version(request.version());
                     response.result(http::status::ok);
                     response.set(http::field::server, BOOST_BEAST_VERSION_STRING);
@@ -86,10 +74,20 @@ awaitable<void> coro_http_server::session_handler(tcp::socket socket) {
                     response.keep_alive(request.keep_alive());
                     co_await http::async_write(socket, response, use_awaitable);
                 }
+            } else {
+                //NOT_FOUND
+                log_trace("Method: " << request.method() << " Url: " << request.target() << " NOT_FOUND");
+                http::response<http::string_body> response = http::response<http::string_body>{http::status::not_found, request.version()};
+                response.version(request.version());
+                response.result(http::status::ok);
+                response.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+                response.set(http::field::content_type, "text/html");
+                response.keep_alive(request.keep_alive());
+                co_await http::async_write(socket, response, use_awaitable);
+            }
 
-                if (!keepAlive || !request.keep_alive()) {
-                    break;
-                }
+            if (!keepAlive || !request.keep_alive()) {
+                break;
             }
         }
     } catch (boost::system::system_error & ex1) {
@@ -108,7 +106,6 @@ int coro_http_server::start(short port,int hint) {
     bool started = false;
     
     std::shared_ptr<boost::asio::io_context> ioc = std::make_shared<boost::asio::io_context>(hint);
-
     std::unique_ptr<std::thread> t = std::make_unique<std::thread>([&,port,ioc]() {
         co_spawn(*ioc,[&]() -> awaitable<void> {
             tcp::acceptor acceptor4(*ioc, tcp::endpoint(tcp::v4(), port));

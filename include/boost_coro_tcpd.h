@@ -1,5 +1,5 @@
-#ifndef __coro_TCP_SERVER_H_
-#define __coro_TCP_SERVER_H_
+#ifndef __BOOST_CORO_TCPD_H_
+#define __BOOST_CORO_TCPD_H_
 
 #include <iostream>
 #include <thread>
@@ -7,8 +7,7 @@
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/signal_set.hpp>
-#include <boost/asio/write.hpp>
+
 
 using boost::asio::ip::tcp;
 using boost::asio::awaitable;
