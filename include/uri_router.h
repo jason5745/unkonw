@@ -17,14 +17,15 @@ private:
 public:
     uri_part() {};
     ~uri_part() {};
-    void insert(std::list<std::string>&& list,std::shared_ptr<T> value) {
+
+    void insert(std::list<std::string>&& list,std::shared_ptr<T>&& value) {
         if (!list.empty()) {
             auto it = next.find(list.front());
             if (it == next.end()) {
                 it = next.insert({list.front(),uri_part()}).first;
             }
             list.pop_front();
-            it->second.insert(std::move(list),value);
+            it->second.insert(std::move(list),std::move(value));
         } else {
             this->value = value;
         }
@@ -45,14 +46,14 @@ public:
 };
 
 template <class T>
-class uri_router
+class UriRouter
 {
 private:
     uri_part<T> part;
 public:
-    uri_router() {};
-    ~uri_router() {};
-    void insert(std::string path,std::shared_ptr<T> value) {
+    UriRouter() {};
+    ~UriRouter() {};
+    void insert(std::string path,std::shared_ptr<T>&& value) {
         std::string token;
         std::stringstream ss(path);
         std::list<std::string> list;
@@ -61,8 +62,9 @@ public:
                 list.push_back(token);
             }
         }
-        part.insert(std::move(list),value);
+        part.insert(std::move(list),std::move(value));
     }
+
     std::shared_ptr<T> find(std::string path) {
         std::string token;
         std::stringstream ss(path);

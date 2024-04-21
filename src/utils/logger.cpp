@@ -8,14 +8,14 @@
 #include <boost/log/utility/setup/console.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/support/date_time.hpp>
+#include "logger.h"
 
-#include "boost_log.h"
-
-logger& logger::instance() {
-    static logger log;
+Logger& Logger::instance() {
+    static Logger log;
     return log;
 }
-bool logger::configure(std::string name, boost::log::trivial::severity_level level, int maxFileSize) {
+bool Logger::configure(std::string name, boost::log::trivial::severity_level level, int maxFileSize) {
+    boost::log::core::get()->add_global_attribute("ThreadID", boost::log::attributes::current_thread_id());
     boost::log::formatter formatter =
         boost::log::expressions::stream
         << boost::log::expressions::format_date_time<boost::posix_time::ptime>("TimeStamp","%Y-%m-%d %H:%M:%S.%f") /*.%f*/
@@ -24,7 +24,7 @@ bool logger::configure(std::string name, boost::log::trivial::severity_level lev
         << boost::log::expressions::smessage;
 
 
-    boost::shared_ptr<logger::file_sink> fileSink(new logger::file_sink(
+    boost::shared_ptr<Logger::file_sink> fileSink(new Logger::file_sink(
         boost::log::keywords::target_file_name = name + ".%Y-%m-%d-%H.%N.log",   // file name pattern
         boost::log::keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point(16, 0, 0),
         boost::log::keywords::rotation_size = maxFileSize * 1024 * 1024,                                        
@@ -54,11 +54,12 @@ bool logger::configure(std::string name, boost::log::trivial::severity_level lev
     );
     return true;
 }
-bool logger::configure(boost::log::trivial::severity_level level, int maxFileSize) {
+bool Logger::configure(boost::log::trivial::severity_level level, int maxFileSize) {
+    boost::log::core::get()->add_global_attribute("ThreadID", boost::log::attributes::current_thread_id());
     boost::log::formatter formatter = 
         boost::log::expressions::stream
         << boost::log::expressions::format_date_time<boost::posix_time::ptime>("TimeStamp","%Y-%m-%d %H:%M:%S.%f") /*.%f*/
-        << " ["<< boost::log::expressions::attr<boost::log::attributes::current_process_id::value_type>("ThreadID") << "]"
+        << " ["<< boost::log::expressions::attr<boost::log::attributes::current_thread_id::value_type>("ThreadID") << "]"
         << " ["<< boost::log::expressions::attr<boost::log::trivial::severity_level>("Severity") << "] - "
         << boost::log::expressions::smessage;
 

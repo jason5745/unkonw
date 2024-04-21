@@ -15,7 +15,7 @@ using boost::asio::co_spawn;
 using boost::asio::detached;
 using boost::asio::use_awaitable;
 
-class coro_tcp_server {
+class CoroTCPServer {
 private:
     std::function<awaitable<void>(tcp::socket&)> on_connected_handle;
     std::function<awaitable<void>(tcp::socket&,const char *,size_t)> on_message_handle;
@@ -24,14 +24,14 @@ private:
     std::shared_ptr<boost::asio::io_context> io_context;
     std::unique_ptr<std::thread> thread;
 public:
-     coro_tcp_server(coro_tcp_server&& other) {
+    CoroTCPServer(CoroTCPServer&& other) {
         on_connected_handle = std::move(other.on_connected_handle);
         on_message_handle = std::move(other.on_message_handle);
         on_disconnected_handle = std::move(other.on_disconnected_handle);
         io_context = std::move(other.io_context);
         thread = std::move(other.thread);
     }
-    coro_tcp_server& operator=(coro_tcp_server&& other) {
+    CoroTCPServer& operator=(CoroTCPServer&& other) {
         if (this != &other) {
             on_connected_handle = std::move(other.on_connected_handle);
             on_message_handle = std::move(other.on_message_handle);
@@ -42,16 +42,16 @@ public:
         return *this;
     }
     
-    coro_tcp_server(
+    CoroTCPServer(
         std::function<awaitable<void>(tcp::socket&)> on_connected_handle,
         std::function<awaitable<void>(tcp::socket&,const char *,size_t)> on_message_handle,
         std::function<awaitable<void>(tcp::socket&)> on_disconnected_handle);
 
-    ~coro_tcp_server();
+    ~CoroTCPServer();
     
     int start(short port,int hint);
     void stop();
     awaitable<void> session_handler(tcp::socket socket);
-    static coro_tcp_server&& getTestInstance();
+    static CoroTCPServer&& getTestInstance();
 };
 #endif
