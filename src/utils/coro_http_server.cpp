@@ -71,21 +71,21 @@ int CoroHTTPServer::start(short port,int hint) {
         //     }
         // } , detached);
         
-        log_info("HTTP Server [" + std::to_string(port) + "] 已启动");
+        log_info("HTTP Server [" << port << "] 已启动");
         started = true;
         cv.notify_one();
         ioc->run();
-        log_info("HTTP Server [" + std::to_string(port) + "] 已停止");
+        log_info("HTTP Server [" << port << "] 已停止");
     });
 
     std::unique_lock<std::mutex> lock(mtx);
-    log_info("HTTP Server [" + std::to_string(port) + "] 正在启动");
+    log_info("HTTP Server [" << port << "] 正在启动");
     if (cv.wait_for(lock, std::chrono::seconds(3),[&]() { return started; })) {
         io_context = std::move(ioc);
         thread = std::move(t);
         return 0;
     } else {
-        log_info("HTTP Server [" + std::to_string(port) + "] 启动超时");
+        log_info("HTTP Server [" << port << "] 启动超时");
         ioc->stop();
         t->join();
         return -1;
@@ -93,8 +93,8 @@ int CoroHTTPServer::start(short port,int hint) {
 }
 
 void CoroHTTPServer::stop() {
-    log_info("正在关闭");
     if (io_context != nullptr && thread != nullptr && thread->joinable()) {
+        log_info("正在关闭");
         io_context->stop();
         thread->join();
     } else {
