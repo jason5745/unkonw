@@ -44,7 +44,7 @@ int CoroTCPServer::start(short port,int hint) {
     bool started = false;
     std::shared_ptr<boost::asio::io_context> ioc = std::make_shared<boost::asio::io_context>(hint);
     std::unique_ptr<std::thread> t = std::make_unique<std::thread>([&,ioc,port]() {
-        co_spawn(*ioc,[&,port]() -> awaitable<void> {
+        co_spawn(*ioc,[&]() -> awaitable<void> {
             tcp::acceptor acceptor4(*ioc, tcp::endpoint(tcp::v4(), port));
             for (;;) {
                 tcp::socket socket = co_await acceptor4.async_accept(use_awaitable);
