@@ -65,10 +65,7 @@ int CoroHTTPServer::start(uint16_t port) {
         service.io_context = std::make_shared<boost::asio::io_context>();
         service.thread = std::make_unique<std::thread>([io_context = service.io_context,port,this] () {
             tcp::acceptor acceptor(*io_context);
-            tcp::endpoint endpoint = tcp::endpoint(tcp::v4(), port);
             acceptor.open(tcp::v4());
-            // acceptor.set_option(tcp::acceptor::reuse_address(true));
-            // acceptor.bind(endpoint);
 
             int on = 1;
             setsockopt(acceptor.native_handle(), SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
@@ -78,6 +75,9 @@ int CoroHTTPServer::start(uint16_t port) {
             sa.sin_addr.s_addr = INADDR_ANY;
             sa.sin_port = htons(port);
             bind(acceptor.native_handle(),(const sockaddr *)&sa,sizeof(sa));
+
+            // acceptor.set_option(tcp::acceptor::reuse_address(true));
+            // acceptor.bind(tcp::endpoint(tcp::v4(), port));
             acceptor.listen();
             
             co_spawn(*io_context,[&,io_context,port] () -> awaitable <void> {
@@ -146,7 +146,7 @@ CoroHTTPServer&& CoroHTTPServer::getTestInstance() {
             response.set(http::field::content_type, "text/html");
             response.keep_alive(request.keep_alive());
             response.prepare_payload();
-            log_info("/");
+            //log_info("/");
             co_return response;
         }
     );
@@ -160,7 +160,7 @@ CoroHTTPServer&& CoroHTTPServer::getTestInstance() {
             response.set(http::field::content_type, "text/html");
             response.keep_alive(request.keep_alive());
             response.prepare_payload();
-            log_info("/123");
+            //log_info("/123");
             co_return response;
         }
     );

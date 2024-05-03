@@ -8,8 +8,8 @@
 #include <boost/log/sinks.hpp>
 #include <boost/log/trivial.hpp>
 
-#define log_trace(message) BOOST_LOG_SEV(Logger::instance()._logger,boost::log::trivial::trace) << __FILE__ << ":" << __LINE__ << " " << message
-#define log_debug(message) BOOST_LOG_SEV(Logger::instance()._logger,boost::log::trivial::debug) << __FILE__ << ":" << __LINE__ << " " << message
+#define log_trace(message) BOOST_LOG_SEV(Logger::instance()._logger,boost::log::trivial::trace) << __FILE__ << ":" << __LINE__ << " -> " << __PRETTY_FUNCTION__ << " " << message
+#define log_debug(message) BOOST_LOG_SEV(Logger::instance()._logger,boost::log::trivial::debug) << __FILE__ << ":" << __LINE__ << " -> " << __PRETTY_FUNCTION__ << " " << message
 #define log_info(message)  BOOST_LOG_SEV(Logger::instance()._logger,boost::log::trivial::info) << __FILE__ << ":" << __LINE__ << " " << message
 #define log_warn(message)  BOOST_LOG_SEV(Logger::instance()._logger,boost::log::trivial::warning) << __FILE__ << ":" << __LINE__ << " " << message
 #define log_error(message) BOOST_LOG_SEV(Logger::instance()._logger,boost::log::trivial::error) << __FILE__ << ":" << __LINE__ << " " << message
@@ -24,6 +24,9 @@ public:
     };
     Logger() {}
     ~Logger() {}
+    
+    Logger(const Logger&) = delete;
+    Logger& operator = (const Logger&) = delete;
 
     boost::log::sources::severity_logger<boost::log::trivial::severity_level> _logger;
     static Logger& instance();

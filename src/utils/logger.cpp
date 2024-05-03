@@ -20,7 +20,7 @@ bool Logger::configure(std::string name, boost::log::trivial::severity_level lev
         boost::log::expressions::stream
         << boost::log::expressions::format_date_time<boost::posix_time::ptime>("TimeStamp","%Y-%m-%d %H:%M:%S.%f") /*.%f*/
         << " ["<< boost::log::expressions::attr<boost::log::attributes::current_thread_id::value_type>("ThreadID") << "]"
-        << " ["<< boost::log::expressions::attr<boost::log::trivial::severity_level>("Severity") << "] - "
+        << " ["<< boost::log::expressions::attr<boost::log::trivial::severity_level>("Severity") << "]"
         << boost::log::expressions::smessage;
 
 
@@ -60,7 +60,7 @@ bool Logger::configure(boost::log::trivial::severity_level level, int maxFileSiz
         boost::log::expressions::stream
         << boost::log::expressions::format_date_time<boost::posix_time::ptime>("TimeStamp","%Y-%m-%d %H:%M:%S.%f") /*.%f*/
         << " ["<< boost::log::expressions::attr<boost::log::attributes::current_thread_id::value_type>("ThreadID") << "]"
-        << " ["<< boost::log::expressions::attr<boost::log::trivial::severity_level>("Severity") << "] - "
+        << " ["<< boost::log::expressions::attr<boost::log::trivial::severity_level>("Severity") << "]"
         << boost::log::expressions::smessage;
 
     auto consoleSink = boost::log::add_console_log();

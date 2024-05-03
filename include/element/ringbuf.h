@@ -7,17 +7,16 @@
 template<typename T>
 class ringbuf {
 private:
+    volatile size_t _head = 0;
+    volatile size_t _tail = 0;
     std::vector<T> _node;
-    std::mutex _mtx;
-    size_t _head = 0;
-    size_t _tail = 0;
     size_t _max;
 public:
 
     ringbuf(size_t initialsize) :_max(initialsize + 1), _head(0), _tail(0) {
         _node = std::vector<T>(initialsize + 1);
     }
-    ~ringbuf() {}
+    virtual ~ringbuf() {}
 
     ringbuf(const ringbuf&) = delete;
     ringbuf& operator = (const ringbuf&) = delete;
