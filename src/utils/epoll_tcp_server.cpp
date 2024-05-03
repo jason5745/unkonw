@@ -1,5 +1,5 @@
 
-
+#ifdef __linux__
 #include <boost/asio/buffer.hpp>
 #include <condition_variable>
 #include "epoll_tcp_server.h"
@@ -142,3 +142,4 @@ EpollTCPServer&& EpollTCPServer::getTestInstance() {
     tcpd.start(10080);
     return std::move(tcpd);
 }
+#endif

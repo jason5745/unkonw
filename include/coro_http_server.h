@@ -19,36 +19,38 @@ namespace http = boost::beast::http;
 typedef std::function<awaitable<http::response<http::string_body>>(tcp::socket& ,http::request<http::string_body>&)> HttpFunction;
 typedef std::unordered_map<http::verb, HttpFunction> HttpMethods;
 
-class CoroHTTPServer {
-private:
-    bool keepAlive;
-    UriRouter<HttpMethods> routes;
+struct CoroHTTPSubServer{
     std::shared_ptr<boost::asio::io_context> io_context;
     std::unique_ptr<std::thread> thread;
+};
+
+class CoroHTTPServer {
+private:
+    bool _keepAlive;
+    UriRouter<HttpMethods> _routes;
+    std::vector<CoroHTTPSubServer> _subservices;
 
 public:
     CoroHTTPServer(CoroHTTPServer&& other) {
-        io_context = std::move(other.io_context);
-        routes = std::move(other.routes);
-        thread = std::move(other.thread);
-        keepAlive = other.keepAlive;
-        other.keepAlive = 0;
+        _subservices = std::move(other._subservices);
+        _routes = std::move(other._routes);
+        _keepAlive = other._keepAlive;
+        other._keepAlive = 0;
     }
     CoroHTTPServer& operator=(CoroHTTPServer&& other) {
         if (this != &other) {
-            io_context = std::move(other.io_context);
-            routes = std::move(other.routes);
-            thread = std::move(other.thread);
-            keepAlive = other.keepAlive;
-            other.keepAlive = 0;
+            _subservices = std::move(other._subservices);
+            _routes = std::move(other._routes);
+            _keepAlive = other._keepAlive;
+            other._keepAlive = 0;
         }
         return *this;
     }
 
-    CoroHTTPServer(bool isKeepAlive): keepAlive(isKeepAlive) {};
-    ~CoroHTTPServer() {};
+    CoroHTTPServer(size_t threads,bool keepAlive);
+    ~CoroHTTPServer();
 
-    int start(short port,int hint);
+    int start(uint16_t port);
     void stop();
     awaitable<void> session_handler(tcp::socket socket);
     void add(http::verb method, std::string path, HttpFunction function);

@@ -1,6 +1,7 @@
 #ifndef __EPOLL_TCP_SERVER_H_
 #define __EPOLL_TCP_SERVER_H_
 
+#ifdef __linux__
 #include <iostream>
 #include <sstream>
 #include <thread>
@@ -97,4 +98,5 @@ public:
     void session_handler(int socket);
     static EpollTCPServer&& getTestInstance();
 };
+#endif
 #endif
