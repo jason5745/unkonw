@@ -6,46 +6,35 @@ project(app)     # 假设项目使用C++，若为C则改为"C"
 set(CMAKE_CXX_STANDARD 23)           # 设置C++标准（根据实际项目需求调整）
 set(CMAKE_CXX_STANDARD_REQUIRED ON)  # 确保编译器支持指定的C++标准
 set(CMAKE_BUILD_TYPE Debug)
+
+set(CMAKE_OUT_PUT "main")
+
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
 
-# 假设源文件位于src目录，头文件位于include目录
+find_package(protobuf CONFIG REQUIRED)
+include(FindProtobuf)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--copy-dt-needed-entries")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--copy-dt-needed-entries")
+
+find_package(Boost COMPONENTS coroutine context url REQUIRED)
+
+include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${PROTOBUF_INCLUDE_DIR})
 include_directories(include)
 include_directories(include/element)
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/extern/boost/include)
-set(BOOST_LIBRARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extern/boost/lib")
-#Boost
-if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-    message(STATUS "Running on Linux")
-    file(GLOB BOOST_LIBRARY_FILES "${BOOST_LIBRARY_DIR}/*.so" "${BOOST_LIBRARY_DIR}/*.a")
-elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
-    message(STATUS "Running on Mac OS X")
-    file(GLOB BOOST_LIBRARY_FILES "${BOOST_LIBRARY_DIR}/*.dylib" "${BOOST_LIBRARY_DIR}/*.a")
-else()
-    message(STATUS "Running on another system: ${CMAKE_SYSTEM_NAME}")
-endif()
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/extern/spdlog/include)
 
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 set(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR})
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR})
 
-
 add_subdirectory(src)
 
+target_link_libraries(${CMAKE_OUT_PUT} ${Boost_LIBRARIES})
+target_link_libraries(${CMAKE_OUT_PUT} ${PROTOBUF_LIBRARIES})
 
-target_link_libraries(main ${BOOST_LIBRARY_FILES})
-
-
-# 5. 依赖管理
-# 使用find_package查找并链接外部库（如Boost、OpenCV等）
-# 示例：
-# find_package(Boost REQUIRED COMPONENTS log system)
-# if(Boost_FOUND)
-#     include_directories(${Boost_INCLUDE_DIRS})
-#     target_link_libraries(main ${Boost_LIBRARIES})
-# endif()
 
 # 6. 安装规则
 # install(TARGETS lib DESTINATION lib)

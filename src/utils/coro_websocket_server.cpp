@@ -82,30 +82,21 @@ int CoroWebSocketServer::start(short port,int hint) {
             log_info(ex0.what());
         }
         
-        // co_spawn(*ioc,[&]() -> awaitable<void> {
-        //     tcp::acceptor acceptor6(*ioc, tcp::endpoint(tcp::v6(), port));
-        //     for (;;) {
-        //         websocket::stream<tcp::socket> socket = co_await acceptor6.async_accept(use_awaitable);
-        //         log_info("IPv6 接入一个新连接");
-        //         co_spawn(socket.get_executor(), handle(std::move(socket),on_connected_handle,on_message_handle,on_disconnected_handle), detached);
-        //     }
-        // } , detached);
-        
-        log_info("Websocket Server [" << port << "] 已启动");
+        log_info("Websocket Server [{}] 已启动",port);
         started = true;
         cv.notify_one();
         ioc->run();
-        log_info("Websocket Server [" << port << "] 已停止");
+        log_info("Websocket Server [{}] 已停止",port);
     });
 
     std::unique_lock<std::mutex> lock(mtx);
-    log_info("Websocket Server [" << port << "] 正在启动");
+    log_info("Websocket Server [{}] 正在启动",port);
     if (cv.wait_for(lock, std::chrono::seconds(3),[&]() { return started; })) {
         io_context = std::move(ioc);
         thread = std::move(t);
         return 0;
     } else {
-        log_info("Websocket Server [" << port << "] 启动超时");
+        log_info("Websocket Server [{}] 启动超时",port);
         ioc->stop();
         t->join();
         return -1;

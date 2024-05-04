@@ -17,8 +17,9 @@ public:
 
 int main(int argc, char **argv) {
 
-    // Logger::configure(boost::log::trivial::trace, 1);
+    Logger::getInstance().configure(spdlog::level::trace,"default",1,5);
     
+    log_info("12345");
     CoroHTTPServer coro_http_server = CoroHTTPServer::getTestInstance();
     // CoroTCPServer coro_tcp_server = CoroTCPServer::getTestInstance();
     // CoroWebSocketServer coro_websocket_server = CoroWebSocketServer::getTestInstance();

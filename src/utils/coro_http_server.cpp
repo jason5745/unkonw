@@ -1,9 +1,9 @@
 
 #include <thread>
 #include <boost/url/url.hpp>
-#include "coro_http_server.h"
 #include <netinet/in.h>
 #include "logger.h"
+#include "coro_http_server.h"
 
 using namespace boost::beast;
 awaitable<void> CoroHTTPServer::session_handler(tcp::socket socket) {
@@ -13,15 +13,16 @@ awaitable<void> CoroHTTPServer::session_handler(tcp::socket socket) {
             http::request<http::string_body> request;
             co_await http::async_read(socket, buffer, request, use_awaitable);
             boost::urls::url url(request.target());
+
             auto methods = _routes.find(url.path());
             if (methods != nullptr) {
                 auto function = methods->find(request.method());
                 if (function != methods->end()) {
                     http::response<http::string_body> response = co_await function->second(socket,request);
                     co_await http::async_write(socket, std::move(response), use_awaitable);
-                } else { 
+                } else {
                     //NOT_MODIFIED
-                    log_trace("Method: " << request.method() << " Url: " << url.path() << " NOT_MODIFIED");
+                    log_trace("Method: {}, Url: {} -> NOT_MODIFIED",request.method_string().data(),url.path());
                     http::response<http::string_body> response = http::response<http::string_body>{http::status::not_modified, request.version()};
                     response.set(http::field::content_type, "text/html");
                     response.keep_alive(request.keep_alive());
@@ -29,7 +30,7 @@ awaitable<void> CoroHTTPServer::session_handler(tcp::socket socket) {
                 }
             } else {
                 //NOT_FOUND
-                log_trace("Method: " << request.method() << " Url: " << url.path() << " NOT_FOUND");
+                log_trace("Method: {}, Url: {} -> NOT_FOUND",request.method_string().data(),url.path());
                 http::response<http::string_body> response = http::response<http::string_body>{http::status::not_found, request.version()};
                 response.set(http::field::content_type, "text/html");
                 response.keep_alive(request.keep_alive());
@@ -43,6 +44,7 @@ awaitable<void> CoroHTTPServer::session_handler(tcp::socket socket) {
     } catch (boost::system::system_error & ex1) {
      
     } catch (std::exception& ex0) {
+        log_warn("12345");
         log_warn(ex0.what());
     }
     socket.shutdown(tcp::socket::shutdown_send);
@@ -129,7 +131,7 @@ void CoroHTTPServer::add(http::verb method, std::string path, HttpFunction funct
         if (item == methods->end()) {
             methods->insert({method,function});
         } else {
-            log_warn(method << " " << path << " already exists");
+            log_warn("{}","已添加路由");
         }
     }
 }
@@ -146,7 +148,7 @@ CoroHTTPServer&& CoroHTTPServer::getTestInstance() {
             response.set(http::field::content_type, "text/html");
             response.keep_alive(request.keep_alive());
             response.prepare_payload();
-            //log_info("/");
+            log_info("/");
             co_return response;
         }
     );
@@ -160,7 +162,7 @@ CoroHTTPServer&& CoroHTTPServer::getTestInstance() {
             response.set(http::field::content_type, "text/html");
             response.keep_alive(request.keep_alive());
             response.prepare_payload();
-            //log_info("/123");
+            log_info("/123");
             co_return response;
         }
     );

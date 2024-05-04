@@ -111,7 +111,7 @@ int EpollTCPServer::start(short port) {
     for (int i = 0; i < 10; i++) {
         _threads.push_back(std::move(_WorkThread(port)));
     }
-    log_info("TCP Server [" + std::to_string(port) + "] 已启动");
+    log_info("TCP Server [{}] 已启动",port);
     return 0;
 }
 

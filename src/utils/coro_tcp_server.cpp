@@ -62,20 +62,20 @@ int CoroTCPServer::start(short port,int hint) {
         //     }
         // } , detached);
 
-        log_info("TCP Server [" << port << "] 已启动");
+        log_info("TCP Server [{}] 已启动",port);
         started = true;
         cv.notify_one();
         ioc->run();
-        log_info("TCP Server [" << port << "] 已停止");
+        log_info("TCP Server [{}] 已停止",port);
     });
     std::unique_lock<std::mutex> lock(mtx);
-    log_info("TCP Server [" << port << "] 正在启动");
+    log_info("TCP Server [{}] 正在启动",port);
     if (cv.wait_for(lock, std::chrono::seconds(3),[&]() { return started; })) {
         io_context = std::move(ioc);
         thread = std::move(t);
         return 0;
     } else {
-        log_info("TCP Server [" << port << "] 启动超时");
+        log_info("TCP Server [{}] 启动超时",port);
         ioc->stop();
         t->join();
         return -1;
@@ -104,10 +104,10 @@ void CoroTCPServer::stop() {
 CoroTCPServer&& CoroTCPServer::getTestInstance() {
     static CoroTCPServer tcpd(
         [] (tcp::socket &socket) -> awaitable<void> {
-            log_info(socket.remote_endpoint().address().to_string() 
-                << ":" 
-                << socket.remote_endpoint().port() 
-                << " 已连接");
+            //log_info(socket.remote_endpoint().address().to_string() 
+                // << ":" 
+                // << socket.remote_endpoint().port() 
+                // << " 已连接");
             co_return;
         },
         [](tcp::socket &socket,const char * data,size_t size) -> awaitable<void> {
@@ -120,10 +120,10 @@ CoroTCPServer&& CoroTCPServer::getTestInstance() {
             co_return;
         },
         [](tcp::socket &socket) -> awaitable<void> {
-            log_info(socket.remote_endpoint().address().to_string() 
-                << ":" 
-                << socket.remote_endpoint().port() 
-                << " 已断开");
+            //log_info(socket.remote_endpoint().address().to_string() 
+                // << ":" 
+                // << socket.remote_endpoint().port() 
+                // << " 已断开");
             co_return;
         }
     );
