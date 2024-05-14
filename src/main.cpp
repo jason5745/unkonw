@@ -1,56 +1,27 @@
 
-#include "coro_http_server.h"
-#include "coro_tcp_server.h"
-#include "epoll_tcp_server.h"
-#include "coro_websocket_server.h"
 #include "logger.h"
 #include "element/ringbuf.h"
-
-//#include "element/linked_list.h"
-
-class A {
-public:
-    int value = 1;
-    A() {value = 1;};
-    A(int a): value(a) {};
-};
+#include "module_factory.h"
 
 int main(int argc, char **argv) {
-
-    Logger::getInstance().configure(spdlog::level::trace,"default",1,5);
-    
-    log_info("12345");
-    CoroHTTPServer coro_http_server = CoroHTTPServer::getTestInstance();
-    // CoroTCPServer coro_tcp_server = CoroTCPServer::getTestInstance();
-    // CoroWebSocketServer coro_websocket_server = CoroWebSocketServer::getTestInstance();
-    // EpollTCPServer epoll_tcp_server = EpollTCPServer::getTestInstance();
-
-    sleep(60 * 60);
-
-    // coro_tcp_server.stop();
-    coro_http_server.stop();
-    // coro_websocket_server.stop();
-    // epoll_tcp_server.stop();
-    // ringbuf<A> buf(100);
-    // std::thread t1([&]{
-    //     A a = A();
-    //     while (true) 
-    //     {
-    //         if (buf.pop(a)) {
-    //             log_info("pop : " << a.value);
-    //         }
-    //         usleep(1000000);
-    //     }
-        
-    // });
-
-    // int i = 0;
-    
-    // while (true)
-    // {
-    //     usleep(1000);
-    // }
-    
+    long i = 0;
+    Logger::getInstance().configure(spdlog::level::trace, "default", 1, 5);
+    std::unique_ptr<module::Module> service = module::Factory::createModule("");
+    service->init("");
+    service->start();
+    std::unique_ptr<module::ModuleRequest> request = std::make_unique<module::ModuleRequest>();
+    while (true) {
+        while (service->pop(request)) {
+            GeneralService::Response response;
+            request->future_(std::move(response));
+        }
+        usleep(1);
+        if (++i == 0) {
+            break;
+        }
+    }
+    service->stop();
+    service->exit();
     return 0;
 }
 

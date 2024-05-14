@@ -2,15 +2,9 @@
 cmake_minimum_required(VERSION 3.16)  # 假设项目需要至少CMake 3.16
 project(app)     # 假设项目使用C++，若为C则改为"C"
 
-
 set(CMAKE_CXX_STANDARD 23)           # 设置C++标准（根据实际项目需求调整）
 set(CMAKE_CXX_STANDARD_REQUIRED ON)  # 确保编译器支持指定的C++标准
 set(CMAKE_BUILD_TYPE Debug)
-
-set(CMAKE_OUT_PUT "main")
-
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
 
 find_package(protobuf CONFIG REQUIRED)
 include(FindProtobuf)
@@ -21,19 +15,20 @@ find_package(Boost COMPONENTS coroutine context url REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${PROTOBUF_INCLUDE_DIR})
-include_directories(include)
-include_directories(include/element)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/extern/spdlog/include)
 
+include_directories(include)
+include_directories(include/element)
+include_directories(${CMAKE_BINARY_DIR}/src/core/dto)
 
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-set(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/src)
+include_directories(${CMAKE_SOURCE_DIR}/src/core)
+
+#set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+#set(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR})
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR})
 
 add_subdirectory(src)
-
-target_link_libraries(${CMAKE_OUT_PUT} ${Boost_LIBRARIES})
-target_link_libraries(${CMAKE_OUT_PUT} ${PROTOBUF_LIBRARIES})
 
 
 # 6. 安装规则

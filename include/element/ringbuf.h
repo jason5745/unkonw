@@ -5,56 +5,51 @@
 #include <memory>
 
 template<typename T>
-class ringbuf {
+class RingBuf {
 private:
-    volatile size_t _head = 0;
-    volatile size_t _tail = 0;
-    std::vector<T> _node;
-    size_t _max;
-public:
+    volatile size_t head_;
+    volatile size_t tail_;
+    size_t max_;
+    std::vector<T> node_;
 
-    ringbuf(size_t initialsize) :_max(initialsize + 1), _head(0), _tail(0) {
-        _node = std::vector<T>(initialsize + 1);
-    }
-    virtual ~ringbuf() {}
-
-    ringbuf(const ringbuf&) = delete;
-    ringbuf& operator = (const ringbuf&) = delete;
-
-
-    bool full() {
-        return ((_tail + 1) % _max == _head);
-    }
-    bool empty() {
-        return (_head == _tail);
-    }
-
-
-    template <typename _TP>
-    bool _push(_TP&& val) {
+    template<typename TP>
+    bool push_(TP &&val) {
         if (full()) {
             return false;
         }
 
-        _node[_tail] = std::move(std::forward<_TP>(val));
-        _tail = (_tail + 1) % _max; 
+        node_[tail_] = std::move(std::forward<TP>(val));
+        tail_ = (tail_ + 1) % max_;
         return true;
     }
+public:
+    RingBuf(const size_t size) : head_(0), tail_(0), max_(size + 1), node_(std::vector<T>(size + 1)) {}
+    virtual ~RingBuf() = default;
 
-    bool push(const T& val) {
-        return _push(val);
+    RingBuf(const RingBuf &) = delete;
+    RingBuf &operator=(const RingBuf &) = delete;
+
+    bool full() {
+        return ((tail_ + 1) % max_ == head_);
+    }
+    bool empty() {
+        return (head_ == tail_);
     }
 
-    bool push(T&& val) {
-        return _push(std::move(val));
+    bool push(const T &val) {
+        return push_(val);
     }
 
-    bool pop(T& val) {
+    bool push(T &&val) {
+        return push_(std::move(val));
+    }
+
+    bool pop(T &val) {
         if (empty()) {
             return false;
         }
-        val = std::move(_node[_head]);
-        _head = (_head + 1) % _max;
+        val = std::move(node_[head_]);
+        head_ = (head_ + 1) % max_;
         return true;
     }
 };

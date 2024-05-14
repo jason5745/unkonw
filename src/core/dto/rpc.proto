@@ -1,8 +1,0 @@
-
-syntax = "proto3"; // 指定protobuf的版本
- 
-message rpc {
-  string topic = 1; 
-  string action = 2;
-  string payload = 3;
-}

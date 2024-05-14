@@ -1,4 +1,4 @@
-project(utils)
+project(epoll)
 
 unset(${PROJECT_NAME}_SUB_PROJECT_NAMES)
 file(GLOB FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *)
@@ -22,4 +22,5 @@ else ()
     target_link_libraries(${PROJECT_NAME} INTERFACE ${${PROJECT_NAME}_SUB_PROJECT_NAMES})
     target_include_directories(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 endif ()
+
 

@@ -1,4 +1,4 @@
-project(utils)
+project(epoll_tcp)
 
 unset(${PROJECT_NAME}_SUB_PROJECT_NAMES)
 file(GLOB FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *)
