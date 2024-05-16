@@ -4,7 +4,7 @@
 #include <future>
 #include <string>
 #include <memory>
-#include <ringbuf.h>
+#include "circular_queue.h"
 #include "general_service.pb.h"
 
 namespace module {
@@ -23,6 +23,20 @@ public:
     ModuleRequest(const ModuleRequest &) = delete;
     ModuleRequest &operator=(const ModuleRequest &) = delete;
 
+    ModuleRequest(ModuleRequest &&other) noexcept {
+        if (this != &other) {
+            request_ = std::move(other.request_);
+            future_ = std::move(other.future_);
+        }
+    };
+    ModuleRequest &operator=(const ModuleRequest &&other) noexcept {
+        if (this != &other) {
+            request_ = std::move(other.request_);
+            future_ = std::move(other.future_);
+        }
+        return *this;
+    };
+
 };
 
 class Module {
@@ -35,10 +49,11 @@ public:
     virtual void start() {};
     virtual void stop() {};
     virtual void exit() {};
-    virtual bool pop(std::unique_ptr<ModuleRequest> &request) { return false; };
-    virtual bool push(std::unique_ptr<ModuleRequest> &request) { return false; };
+    virtual std::shared_ptr<ModuleRequest> pop() {
+        return nullptr;
+    };
+    virtual bool push(std::shared_ptr<ModuleRequest> &request) { return false; };
 };
-
 }
 
 #endif

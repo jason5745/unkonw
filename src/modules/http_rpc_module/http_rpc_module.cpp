@@ -8,8 +8,8 @@ void HttpRpcModule::init(std::string_view configure) {
     threads_ = 4;
     pop_balance_ = 0;
     for (int i = 0; i < threads_; i++) {
-        i_ringbufs_.emplace_back(std::make_unique<RingBuf<std::unique_ptr<ModuleRequest>>>(1024));
-        o_ringbufs_.emplace_back(std::make_unique<RingBuf<std::unique_ptr<ModuleRequest>>>(1024));
+        i_ringbufs_.emplace_back(std::make_unique<CircularQueue<ModuleRequest>>(1024));
+        o_ringbufs_.emplace_back(std::make_unique<CircularQueue<ModuleRequest>>(1024));
     }
 
     service_ = std::make_unique<utils::boost::coroutine::http::Server>(
@@ -23,29 +23,26 @@ void HttpRpcModule::init(std::string_view configure) {
 
             std::promise<GeneralService::Response> promise;
             std::future future = promise.get_future();
-            std::unique_ptr<ModuleRequest> module_request = std::make_unique<ModuleRequest>(
-                std::move(general_request),
-                [&promise](GeneralService::Response &&response) {
-                    promise.set_value(std::move(response));
-                });
+
+            ModuleRequest module_request(std::move(general_request),
+                                         [&promise](GeneralService::Response &&response) {
+                                             promise.set_value(std::move(response));
+                                         });
 
             if (i_ringbufs_[num]->push(std::move(module_request))) {
-                int timeout = 3000;
-                while (
-                    future.wait_for(std::chrono::microseconds(0)) != std::future_status::ready) {
-                    boost::asio::steady_timer timer(
-                        socket.get_executor(),
-                        std::chrono::milliseconds(1)
-                    );
+                std::time_t start = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+                while (future.wait_for(std::chrono::microseconds(0)) != std::future_status::ready) {
+                    boost::asio::steady_timer timer(socket.get_executor(), std::chrono::milliseconds(1));
                     co_await timer.async_wait(boost::asio::use_awaitable);
-                    if (--timeout < 0) {
+
+                    if (std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - start > 2) {
                         break;
                     }
                 }
                 if (future.wait_for(std::chrono::microseconds(0)) == std::future_status::ready) {
                     GeneralService::Response general_response = future.get();
                     response < string_body > resp = response < string_body > {status::ok, request.version()};
-                    resp.body() = std::move("Are U OK\n");
+                    resp.body() = "Are U OK\n";
                     resp.set(field::content_type, "application/json");
                     resp.keep_alive(request.keep_alive());
                     resp.prepare_payload();
@@ -86,14 +83,8 @@ void HttpRpcModule::exit() {
 
 }
 
-bool HttpRpcModule::pop(std::unique_ptr<ModuleRequest> &request) {
-    for (int i = 0; i < threads_; i++) {
-        pop_balance_ = (pop_balance_ + 1) % threads_;
-        if (i_ringbufs_[pop_balance_]->pop(request)) {
-            return true;
-        }
-    }
-    return false;
+std::shared_ptr<ModuleRequest> HttpRpcModule::pop() {
+    pop_balance_ = (pop_balance_ + 1) % threads_;
+    return i_ringbufs_[pop_balance_]->pop();
 }
-
 }

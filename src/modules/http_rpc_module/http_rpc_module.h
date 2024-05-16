@@ -19,8 +19,8 @@ private:
     int threads_;
     int pop_balance_;
     std::unique_ptr<utils::boost::coroutine::http::Server> service_;
-    std::vector<std::unique_ptr<RingBuf<std::unique_ptr<ModuleRequest>>>> i_ringbufs_;
-    std::vector<std::unique_ptr<RingBuf<std::unique_ptr<ModuleRequest>>>> o_ringbufs_;
+    std::vector<std::unique_ptr<CircularQueue<ModuleRequest>>> i_ringbufs_;
+    std::vector<std::unique_ptr<CircularQueue<ModuleRequest>>> o_ringbufs_;
 public:
     HttpRpcModule();
     ~HttpRpcModule();
@@ -29,7 +29,7 @@ public:
     virtual void start() override;
     virtual void stop() override;
     virtual void exit() override;
-    virtual bool pop(std::unique_ptr<ModuleRequest> &request) override;
+    virtual std::shared_ptr<ModuleRequest> pop() override;
 };
 
 }
