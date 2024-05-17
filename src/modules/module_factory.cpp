@@ -3,7 +3,6 @@
 
 namespace module {
 std::unique_ptr<Module> Factory::createModule(std::string_view name) {
-    std::unique_ptr<Module> p = std::make_unique<HttpRpcModule>();
-    return p;
+	return std::make_unique<HttpRpcModule>();
 }
 }

@@ -24,44 +24,44 @@ typedef std::function<awaitable<response<string_body>>(int num, tcp::socket &, r
 typedef std::unordered_map<verb, HttpFunction> HttpMethods;
 
 struct Handler {
-    std::shared_ptr<::boost::asio::io_context> io_context;
-    std::unique_ptr<std::thread> thread;
+	std::shared_ptr<::boost::asio::io_context> io_context;
+	std::unique_ptr<std::thread> thread;
 };
 
 class Server {
 private:
-    bool keep_alive_;
-    HttpFunction global_;
-    UriRouter<HttpMethods> routes_;
-    std::vector<Handler> handlers_;
+	bool keep_alive_;
+	HttpFunction global_;
+	UriRouter<HttpMethods> routes_;
+	std::vector<Handler> handlers_;
 
 public:
-    Server(Server &&other) noexcept {
-        handlers_ = std::move(other.handlers_);
-        routes_ = std::move(other.routes_);
-        global_ = std::move(other.global_);
-        keep_alive_ = other.keep_alive_;
-        other.keep_alive_ = 0;
-    }
+	Server(Server &&other) noexcept {
+		handlers_ = std::move(other.handlers_);
+		routes_ = std::move(other.routes_);
+		global_ = std::move(other.global_);
+		keep_alive_ = other.keep_alive_;
+		other.keep_alive_ = 0;
+	}
 
-    Server &operator=(Server &&other) noexcept {
-        if (this != &other) {
-            handlers_ = std::move(other.handlers_);
-            routes_ = std::move(other.routes_);
-            global_ = std::move(other.global_);
-            keep_alive_ = other.keep_alive_;
-            other.keep_alive_ = 0;
-        }
-        return *this;
-    }
-    Server(size_t threads, bool keep_alive);
-    Server(size_t threads, HttpFunction global, bool keep_alive);
-    ~Server();
-    int start(uint16_t port);
-    void stop();
-    void mount(verb method, std::string path, HttpFunction function);
-    static Server &&getTestInstance();
-    awaitable<void> session(int num, tcp::socket socket);
+	Server &operator=(Server &&other) noexcept {
+		if (this != &other) {
+			handlers_ = std::move(other.handlers_);
+			routes_ = std::move(other.routes_);
+			global_ = std::move(other.global_);
+			keep_alive_ = other.keep_alive_;
+			other.keep_alive_ = 0;
+		}
+		return *this;
+	}
+	Server(size_t threads, bool keep_alive);
+	Server(size_t threads, HttpFunction global, bool keep_alive);
+	~Server();
+	int start(uint16_t port);
+	void stop();
+	void mount(verb method, std::string path, HttpFunction function);
+	static Server &&getTestInstance();
+	awaitable<void> session(int num, tcp::socket socket);
 };
 }
 }

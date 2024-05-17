@@ -11,7 +11,7 @@ include(FindProtobuf)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--copy-dt-needed-entries")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--copy-dt-needed-entries")
 
-find_package(Boost COMPONENTS coroutine context url REQUIRED)
+find_package(Boost COMPONENTS thread coroutine context url REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${PROTOBUF_INCLUDE_DIR})

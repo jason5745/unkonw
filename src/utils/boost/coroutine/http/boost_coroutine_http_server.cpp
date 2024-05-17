@@ -101,7 +101,7 @@ int Server::start(uint16_t port) {
             // acceptor.bind(tcp::endpoint(tcp::v4(), port));
             acceptor.listen();
 
-            (void) co_spawn(*io_context, [&, io_context, thread_num]() -> awaitable<void> {
+            (void) co_spawn(acceptor.get_executor(), [&, thread_num]() -> awaitable<void> {
                 for (;;) {
                     tcp::socket socket = co_await acceptor.async_accept(use_awaitable);
                     co_spawn(socket.get_executor(), session(thread_num, std::move(socket)), detached);

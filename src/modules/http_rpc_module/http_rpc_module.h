@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <boost/asio.hpp>
+#include <boost/thread/future.hpp>
 #include "boost_coroutine_http_server.h"
 #include "logger.h"
 #include "module.h"
@@ -16,20 +17,24 @@ using ::boost::asio::use_awaitable;
 
 class HttpRpcModule : public Module {
 private:
-    int threads_;
-    int pop_balance_;
-    std::unique_ptr<utils::boost::coroutine::http::Server> service_;
-    std::vector<std::unique_ptr<CircularQueue<ModuleRequest>>> i_ringbufs_;
-    std::vector<std::unique_ptr<CircularQueue<ModuleRequest>>> o_ringbufs_;
+	int threads_;
+	int pop_balance_;
+	std::unique_ptr<utils::boost::coroutine::http::Server> service_;
+	std::vector<std::unique_ptr<CircularQueue<ModuleRequest>>> i_ringbufs_;
+	std::vector<std::unique_ptr<CircularQueue<ModuleRequest>>> o_ringbufs_;
 public:
-    HttpRpcModule();
-    ~HttpRpcModule();
-    awaitable<response<string_body>> handle(int thread_num, auto &socket, request<string_body> &request);
-    virtual void init(std::string_view configure) override;
-    virtual void start() override;
-    virtual void stop() override;
-    virtual void exit() override;
-    virtual std::shared_ptr<ModuleRequest> pop() override;
+	HttpRpcModule();
+	virtual ~HttpRpcModule();
+
+	static ::boost::asio::awaitable<bool> futureWait(
+		const ::boost::asio::any_io_executor &executor,
+		const ::boost::unique_future<GeneralService::Response> &future);
+
+	virtual void init(std::string_view configure) override;
+	virtual void start() override;
+	virtual void stop() override;
+	virtual void exit() override;
+	virtual std::shared_ptr<ModuleRequest> pop() override;
 };
 
 }
