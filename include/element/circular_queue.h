@@ -53,7 +53,7 @@ public:
 		if (empty()) {
 			std::mutex mtx;
 			std::unique_lock<std::mutex> lock(mtx);
-			if (!cv_push_.wait_for(lock, std::chrono::microseconds(1), [&]() { return !empty(); })) {
+			if (!cv_push_.wait_for(lock, std::chrono::microseconds (10L), [&]() { return !empty(); })) {
 				//超时后仍然没有新元素输入，返回失败
 				return nullptr;
 			}

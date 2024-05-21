@@ -92,7 +92,7 @@ int Server::start(short port, int hint) {
 
     std::unique_lock<std::mutex> lock(mtx);
     log_info("Websocket Server [{}] 正在启动", port);
-    if (cv.wait_for(lock, std::chrono::seconds(3), [&]() { return started; })) {
+    if (cv.wait_for(lock, std::chrono::seconds(3L), [&]() { return started; })) {
         io_context_ = std::move(ioc);
         thread_ = std::move(t);
         return 0;

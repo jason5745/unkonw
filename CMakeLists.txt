@@ -4,12 +4,12 @@ project(app)     # 假设项目使用C++，若为C则改为"C"
 
 set(CMAKE_CXX_STANDARD 23)           # 设置C++标准（根据实际项目需求调整）
 set(CMAKE_CXX_STANDARD_REQUIRED ON)  # 确保编译器支持指定的C++标准
-set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_BUILD_TYPE Debug)
 
 find_package(protobuf CONFIG REQUIRED)
 include(FindProtobuf)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--copy-dt-needed-entries")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--copy-dt-needed-entries")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--copy-dt-needed-entries")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--copy-dt-needed-entries")
 
 find_package(Boost COMPONENTS thread coroutine context url REQUIRED)
 

@@ -2,6 +2,7 @@
 #define __HttpRpcModule_H_
 
 #include <vector>
+#include <memory>
 #include <boost/asio.hpp>
 #include <boost/thread/future.hpp>
 #include "boost_coroutine_http_server.h"
@@ -25,10 +26,6 @@ private:
 public:
 	HttpRpcModule();
 	virtual ~HttpRpcModule();
-
-	static ::boost::asio::awaitable<bool> futureWait(
-		const ::boost::asio::any_io_executor &executor,
-		const ::boost::unique_future<GeneralService::Response> &future);
 
 	virtual void init(std::string_view configure) override;
 	virtual void start() override;

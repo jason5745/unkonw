@@ -9,14 +9,15 @@ namespace utils {
 namespace boost {
 namespace coroutine{
 namespace http {
-awaitable<void> Server::session(int num, tcp::socket socket) {
+awaitable<void> Server::session(WorkHandler *worker, tcp::socket socket) {
+    worker->members++;
     try {
         ::boost::beast::flat_buffer buffer(8196);
         for (;;) {
             http::request<http::string_body> request;
             (void) co_await http::async_read(socket, buffer, request, use_awaitable);
             if (global_ != nullptr) {
-                http::response<http::string_body> response = co_await global_(num, socket, request);
+                http::response<http::string_body> response = co_await global_(worker->tid, socket, request);
                 (void) co_await http::async_write(socket, response, use_awaitable);
             } else {
                 ::boost::urls::url url(request.target());
@@ -24,7 +25,7 @@ awaitable<void> Server::session(int num, tcp::socket socket) {
                 if (methods != nullptr) {
                     auto function = methods->find(request.method());
                     if (function != methods->end()) {
-                        http::response<http::string_body> response = co_await function->second(num, socket, request);
+                        http::response<http::string_body> response = co_await function->second(worker->tid, socket, request);
                         (void) co_await http::async_write(socket, response, use_awaitable);
                     } else {
                         //NOT_MODIFIED
@@ -48,7 +49,7 @@ awaitable<void> Server::session(int num, tcp::socket socket) {
                 }
             }
             buffer.clear();
-            if (!keep_alive_ || !request.keep_alive()) {
+            if (!request.keep_alive()) {
                 break;
             }
         }
@@ -57,22 +58,18 @@ awaitable<void> Server::session(int num, tcp::socket socket) {
         log_warn(ex0.what());
     }
     socket.shutdown(tcp::socket::shutdown_send);
+    worker->members--;
     co_return;
 }
 
-Server::Server(size_t threads, bool keep_alive)
-    : keep_alive_(keep_alive) {
+Server::Server(size_t threads) {
     global_ = nullptr;
-    for (size_t i = 0; i < threads; i++) {
-        (void) handlers_.emplace_back();
-    }
+    workers_ = std::vector<WorkHandler>(threads);
 }
 
-Server::Server(size_t threads, HttpFunction global, bool keep_alive)
-    : keep_alive_(keep_alive), global_(std::move(global)) {
-    for (size_t i = 0; i < threads; i++) {
-        (void) handlers_.emplace_back();
-    }
+Server::Server(size_t threads, HttpFunction global)
+    : global_(std::move(global)) {
+    workers_ = std::vector<WorkHandler>(threads);
 }
 
 Server::~Server() {
@@ -80,12 +77,17 @@ Server::~Server() {
 }
 
 int Server::start(uint16_t port) {
-    int thread_num = 0;
-    for (auto &handler : handlers_) {
-        handler.io_context = std::make_shared<::boost::asio::io_context>();
-        handler.thread = std::make_unique<std::thread>([io_context = handler.io_context, port, this, thread_num]() {
-            tcp::acceptor acceptor(*io_context);
+    int i = 0;
+    for (auto &worker : workers_) {
+        worker.tid = i++;
+        worker.th = std::move(std::thread([&, port]() {
+
+            tcp::acceptor acceptor(worker.ctx);
             acceptor.open(tcp::v4());
+
+            // acceptor.set_option(tcp::acceptor::reuse_address(true));
+            // acceptor.bind(tcp::endpoint(tcp::v4(), port));
+
             int on = 1;
             (void) setsockopt(acceptor.native_handle(), SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on));
             struct sockaddr_in sa {
@@ -96,30 +98,38 @@ int Server::start(uint16_t port) {
                 }
             };
             (void) bind(acceptor.native_handle(), (const sockaddr *) &sa, sizeof(sa));
-
-            // acceptor.set_option(tcp::acceptor::reuse_address(true));
-            // acceptor.bind(tcp::endpoint(tcp::v4(), port));
             acceptor.listen();
 
-            (void) co_spawn(acceptor.get_executor(), [&, thread_num]() -> awaitable<void> {
-                for (;;) {
-                    tcp::socket socket = co_await acceptor.async_accept(use_awaitable);
-                    co_spawn(socket.get_executor(), session(thread_num, std::move(socket)), detached);
+            (void) co_spawn(acceptor.get_executor(), [&]() -> awaitable<void> {
+                for(;;) {
+                    auto it = std::min_element(
+                        workers_.begin(), workers_.end(),
+                        [](const WorkHandler &l,const WorkHandler &r) {
+                            return l.members < r.members;
+                        }
+                    );
+                    if (it != workers_.end()) {
+                        tcp::socket socket(it->ctx);
+                        co_await acceptor.async_accept(socket,use_awaitable);
+                        co_spawn(it->ctx.get_executor(), session(it.base(),std::move(socket)), detached);
+                    } else {
+                        tcp::socket socket = co_await acceptor.async_accept(use_awaitable);
+                        co_spawn(socket.get_executor(), session(&worker,std::move(socket)), detached);
+                    }
                 }
             }, detached);
-            io_context->run();
-        });
-        thread_num++;
+            worker.ctx.run();
+        }));
     }
     return 0;
 }
 
 void Server::stop() {
-    for (auto &handler : handlers_) {
-        if (handler.io_context != nullptr && handler.thread != nullptr && handler.thread->joinable()) {
+    for (auto &worker : workers_) {
+        if (worker.th.joinable()) {
             log_info("正在关闭");
-            handler.io_context->stop();
-            handler.thread->join();
+            worker.ctx.stop();
+            worker.th.join();
         } else {
             log_error("未启动");
         }
@@ -143,7 +153,7 @@ void Server::mount(http::verb method, std::string path, HttpFunction function) {
 }
 
 Server &&Server::getTestInstance() {
-    static Server httpd(4, true);
+    static Server httpd(8);
     httpd.mount(http::verb::get, "/",
                    [](int num, auto &socket, auto &request) -> awaitable<http::response<http::string_body>> {
                        std::future<std::string> future;
