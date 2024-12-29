@@ -1,0 +1,18 @@
+
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  message Data {
+    string token = 1;
+  }
+  int32 code = 1;
+  string desc = 2;
+  Data data = 3;
+}

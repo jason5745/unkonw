@@ -1,55 +1,86 @@
 
 cmake_minimum_required(VERSION 3.16)  # 假设项目需要至少CMake 3.16
-project(app)     # 假设项目使用C++，若为C则改为"C"
+project(GatewayApplication)     # 假设项目使用C++，若为C则改为"C"
 
 set(CMAKE_CXX_STANDARD 23)           # 设置C++标准（根据实际项目需求调整）
 set(CMAKE_CXX_STANDARD_REQUIRED ON)  # 确保编译器支持指定的C++标准
-set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_BUILD_TYPE Debug)
+
+set(SPDLOG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extern/spdlog/include")
+
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    message(STATUS "You are building on Linux")
+
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--copy-dt-needed-entries")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--copy-dt-needed-entries")
+    set(EXTERNAL_LIBRARIES)
+
+elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
+    message(STATUS "You are building on Windows")
+
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+    set(EXTERNAL_LIBRARIES)
+
+elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+    message(STATUS "You are building on macOS")
+
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+    set(EXTERNAL_LIBRARIES absl::status absl::absl_log absl::absl_check)
+
+else()
+    message(STATUS "You are building on another system")
+
+endif()
 
 find_package(protobuf CONFIG REQUIRED)
-include(FindProtobuf)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--copy-dt-needed-entries")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--copy-dt-needed-entries")
+find_package(Boost CONFIG REQUIRED)
 
-find_package(Boost COMPONENTS thread coroutine context url REQUIRED)
+include(FindProtobuf)
 
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${PROTOBUF_INCLUDE_DIR})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/extern/spdlog/include)
+include_directories(${SPDLOG_INCLUDE_DIR})
 
-include_directories(include)
-include_directories(include/element)
-include_directories(${CMAKE_BINARY_DIR}/src/core/dto)
-
-include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_SOURCE_DIR}/src/core)
-
-#set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-#set(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR})
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR})
-
 add_subdirectory(src)
 
 
-# 6. 安装规则
-# install(TARGETS lib DESTINATION lib)
-# install(TARGETS app DESTINATION bin)
-# install(DIRECTORY include/ DESTINATION include)
-
-# 7. 测试与文档生成（可选）
-# enable_testing()                       # 启用CTest支持
-# find_package(GTest REQUIRED)          # 引入Google Test
-# if(GTEST_FOUND)
-#     include_directories(${GTEST_INCLUDE_DIRS})
-#     add_subdirectory(tests)            # 包含测试子目录（如果有）
-# endif()
-
-# find_package(Doxygen)                 # 查找Doxygen
-# if(DOXYGEN_FOUND)
-#     configure_file(Doxyfile.in Doxyfile @ONLY)
-#     add_custom_target(doc
-#         COMMAND ${DOXYGEN_EXECUTABLE} Doxyfile
-#         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-#         COMMENT "Generating API documentation with Doxygen"
-#         VERBATIM)
-# endif()
+#
+#set(ABSEL_LIBRARIES
+#        absl::absl_check
+#        absl::absl_log
+#        absl::algorithm
+#        absl::base
+#        absl::bind_front
+#        absl::bits
+#        absl::btree
+#        absl::cleanup
+#        absl::cord
+#        absl::core_headers
+#        absl::debugging
+#        absl::die_if_null
+#        absl::dynamic_annotations
+#        absl::flags
+#        absl::flat_hash_map
+#        absl::flat_hash_set
+#        absl::function_ref
+#        absl::hash
+#        absl::layout
+#        absl::log_initialize
+#        absl::log_severity
+#        absl::memory
+#        absl::node_hash_map
+#        absl::node_hash_set
+#        absl::optional
+#        absl::span
+#        absl::status
+#        absl::statusor
+#        absl::strings
+#        absl::synchronization
+#        absl::time
+#        absl::type_traits
+#        absl::utility
+#        absl::variant
+#)
