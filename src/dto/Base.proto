@@ -1,0 +1,17 @@
+
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+
+
+message Request {
+  string action = 1;
+  uint64 timestamp = 2;
+  google.protobuf.Any data = 3;
+}
+
+message Response {
+  uint32 code = 1;
+  string desc = 2;
+  google.protobuf.Any data = 3;
+}
