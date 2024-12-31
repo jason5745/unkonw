@@ -18,19 +18,18 @@ static std::vector<std::string_view> split(std::string_view &s, char delimiter) 
     return tokens;
 }
 
-void ControllerRouter::registerController(std::string_view name, Controller *controller) {
-    controllers.insert({{name,controller}});
+void ControllerRouter::reflect(std::string_view uri,
+             std::function<void(std::shared_ptr<google::protobuf::Message>,std::shared_ptr<google::protobuf::Message>)> &invoke,
+             std::function<std::shared_ptr<google::protobuf::Message>()> &req,
+             std::function<std::shared_ptr<google::protobuf::Message>()> &res) {
+    methods.insert({{uri,Method(invoke,req,res)}});
 }
 
-Controller *ControllerRouter::getController(std::string_view name) {
-    auto it = controllers.find(name);
-    if (it != controllers.end()) {
-        return it->second;
+Method *ControllerRouter::find(std::string_view uri) {
+    auto it = methods.find(uri);
+    if (it != methods.end()) {
+        return &(it->second);
     } else {
         return nullptr;
     }
-}
-void ControllerRouter::invokeMethod(std::string_view &url, BasicRequest *request, BasicResponse *response) {
-    auto fragments = split(url,'/');
-
 }

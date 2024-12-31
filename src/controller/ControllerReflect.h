@@ -8,35 +8,21 @@
 #include "ControllerRouter.h"
 #include "controller/Controller.h"
 
-#define REGISTER_CLASS(url,clazz)                                                                                                       \
-    static ControllerReflect reflect##clazz(url, clazz::getInstance())
-
-#define REGISTER_CLASS_METHOD(clazz, method, typeq, typer)                                                                              \
-    static std::function<void(Controller *,google::protobuf::Message *,google::protobuf::Message *)> _reflectInvoke##clazz##method =    \
-    [](Controller *controller,google::protobuf::Message *request,google::protobuf::Message *response) -> void {                         \
-        static_cast<clazz *>(controller)->method(dynamic_cast<typeq *>(request),dynamic_cast<typer *>(response));                       \
-    };                                                                                                                                  \
-    static std::function<std::shared_ptr<google::protobuf::Message>()> _reflectRequest##clazz##method = []() ->                                        \
-        std::shared_ptr<google::protobuf::Message> {return std::make_shared<typeq>();};                                                 \
-    static std::function<std::shared_ptr<google::protobuf::Message>()> _reflectResponse##clazz##method = []() ->                                       \
-        std::shared_ptr<google::protobuf::Message> {return std::make_shared<typer>();};                                                 \
-    static ControllerReflect reflect##clazz##method(clazz::getInstance(), #method,                                                      \
-                                                    &_reflectInvoke##clazz##method,                                                     \
-                                                    &_reflectRequest##clazz##method,                                                    \
-                                                    &_reflectResponse##clazz##method)
+#define REGISTER_CLASS_METHOD(uri, clazz, method, typeReq, typeRes)                                                                     \
+    static ControllerReflect reflect##clazz##method(uri,                                                                                \
+        [](std::shared_ptr<google::protobuf::Message> request, std::shared_ptr<google::protobuf::Message> response) -> void {           \
+            UserController::login(dynamic_cast<typeReq *>(request.get()),dynamic_cast<typeRes *>(response.get())); },                   \
+        []() -> std::shared_ptr<google::protobuf::Message> { return std::make_shared<typeReq>(); },                                     \
+        []() -> std::shared_ptr<google::protobuf::Message> { return std::make_shared<typeRes>(); })                                     \
 
 
 class ControllerReflect {
 public:
-    ControllerReflect(std::string_view name, Controller *controller) {
-        ControllerRouter::getInstance()->registerController(name, controller);
-    }
-    ControllerReflect(Controller *controller,
-                      std::string_view name,
-                      std::function<void(Controller *,google::protobuf::Message *,google::protobuf::Message *)> *invoke,
-                      std::function<std::shared_ptr<google::protobuf::Message>()> *request,
-                      std::function<std::shared_ptr<google::protobuf::Message>()> *response) {
-        controller->reflect(name,invoke,request,response);
+    ControllerReflect(std::string_view uri,
+                      std::function<void(std::shared_ptr<google::protobuf::Message>,std::shared_ptr<google::protobuf::Message>)> invoke,
+                      std::function<std::shared_ptr<google::protobuf::Message>()> req,
+                      std::function<std::shared_ptr<google::protobuf::Message>()> res) {
+        ControllerRouter::getInstance()->reflect(uri,invoke,req,res);
     }
 };
 

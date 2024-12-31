@@ -2,15 +2,14 @@
 // Created by 顾文超 on 2024/12/30.
 //
 
-#include "SyncHypertextService.h"
-
+#include "AwaitHypertextService.h"
 
 #include <thread>
-#include <boost/url/url.hpp>
 #include <netinet/in.h>
+#include <google/protobuf/util/json_util.h>
+
 #include "Logger.h"
 #include "controller/ControllerRouter.h"
-#include "Basic.pb.h"
 
 awaitable<void> SyncHypertextService::session(SyncHypertextServiceWorkHandler *worker, tcp::socket socket) {
     worker->members++;
@@ -20,38 +19,43 @@ awaitable<void> SyncHypertextService::session(SyncHypertextServiceWorkHandler *w
             http::request<http::string_body> request;
             (void) co_await http::async_read(socket, buffer, request, use_awaitable);
 
-//            BasicRequest _request = BasicRequest();
-
-//            boost::urls::url url(request.target());
-
-//            ControllerRouter::getInstance()->invokeMethod(url.path(),);
-//            auto methods = routes_.find(url.path());
-//            if (methods != nullptr) {
-//                auto function = methods->find(request.method());
-//                if (function != methods->end()) {
-//                    http::response<http::string_body> response = co_await function->second(worker->tid, socket, request);
-//                    (void) co_await http::async_write(socket, response, use_awaitable);
-//                } else {
-//                    //NOT_MODIFIED
-//                    log_trace("Method: {}, Url: {} -> NOT_MODIFIED", request.method_string().data(), url.path());
-//                    http::response<http::string_body> response = http::response<http::string_body>{
-//                        http::status::not_modified, request.version()};
-//                    response.set(http::field::content_type, "text/html");
-//                    request.keep_alive(false);
-//                    response.keep_alive(request.keep_alive());
-//                    (void) co_await http::async_write(socket, response, use_awaitable);
-//                }
-//            } else {
-//                //NOT_FOUND
-////                log_trace("Method: {}, Url: {} -> NOT_FOUND", request.method_string().data(), url.path());
-////                http::response<http::string_body> response = http::response<http::string_body>{
-////                    http::status::not_found, request.version()};
-////                response.set(http::field::content_type, "text/html");
-////                request.keep_alive(false);
-////                response.keep_alive(request.keep_alive());
-////                (void) co_await http::async_write(socket, response, use_awaitable);
-//            }
-
+            auto method = ControllerRouter::getInstance()->find(request.target());
+            if (method != nullptr) {
+                auto req = method->req();
+                auto res = method->res();
+                if (google::protobuf::json::JsonStringToMessage(request.body(), req.operator->()).ok()) {
+                    method->invoke(req,res);
+                    std::string ret;
+                    if (google::protobuf::json::MessageToJsonString(res.operator*(),&ret).ok()) {
+                        http::response<http::string_body> response = http::response<http::string_body>{ http::status::bad_request, request.version()};
+                        response.set(http::field::content_type, "application/json");
+                        response.keep_alive(request.keep_alive());
+                        response.body().append(ret);
+                        (void) co_await http::async_write(socket, response, use_awaitable);
+                    } else {
+                        http::response<http::string_body> response = http::response<http::string_body>{ http::status::internal_server_error, request.version() };
+                        response.set(http::field::content_type, "application/json");
+                        request.keep_alive(false);
+                        response.keep_alive(request.keep_alive());
+                        response.body().append(R"({"code": 500,"desc": "internal server error"})");
+                        (void) co_await http::async_write(socket, response, use_awaitable);
+                    }
+                } else {
+                    http::response<http::string_body> response = http::response<http::string_body>{ http::status::bad_request, request.version() };
+                    response.set(http::field::content_type, "application/json");
+                    request.keep_alive(false);
+                    response.keep_alive(request.keep_alive());
+                    response.body().append(R"({"code": 400,"desc": "bad request"})");
+                    (void) co_await http::async_write(socket, response, use_awaitable);
+                }
+            } else {  //NOT_FOUND
+                http::response<http::string_body> response = http::response<http::string_body>{ http::status::not_found, request.version() };
+                response.set(http::field::content_type, "application/json");
+                request.keep_alive(false);
+                response.keep_alive(request.keep_alive());
+                response.body().append(R"({"code": 404,"desc": "not found"})");
+                (void) co_await http::async_write(socket, response, use_awaitable);
+            }
             buffer.clear();
             if (!request.keep_alive()) {
                 break;
@@ -65,15 +69,8 @@ awaitable<void> SyncHypertextService::session(SyncHypertextServiceWorkHandler *w
     worker->members--;
     co_return;
 }
-
-SyncHypertextService::SyncHypertextService(size_t threads) {
-    workers_ = std::vector<SyncHypertextServiceWorkHandler>(threads);
-}
-
-SyncHypertextService::~SyncHypertextService() {
-
-}
-
+SyncHypertextService::SyncHypertextService(size_t threads) {workers_ = std::vector<SyncHypertextServiceWorkHandler>(threads);}
+SyncHypertextService::~SyncHypertextService() = default;
 int SyncHypertextService::start(uint16_t port) {
     int i = 0;
     for (auto &worker : workers_) {

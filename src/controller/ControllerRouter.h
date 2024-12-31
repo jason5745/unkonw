@@ -7,16 +7,30 @@
 
 #include <unordered_map>
 #include "Singleton.h"
-#include "Basic.pb.h"
 #include "controller/Controller.h"
 
-class ControllerRouter : public Singleton<ControllerRouter> {
-private:
-    std::unordered_map<std::string_view ,Controller *> controllers;
+class Method {
 public:
-    void registerController(std::string_view name,Controller *controller);
-    Controller *getController(std::string_view name);
-    void invokeMethod(std::string_view &url,BasicRequest *request,BasicResponse *response);
+    std::function<void(std::shared_ptr<google::protobuf::Message>,std::shared_ptr<google::protobuf::Message>)> invoke;
+    std::function<std::shared_ptr<google::protobuf::Message>()> req;
+    std::function<std::shared_ptr<google::protobuf::Message>()> res;
+
+    Method(std::function<void(std::shared_ptr<google::protobuf::Message>,std::shared_ptr<google::protobuf::Message>)> &_invoke,
+           std::function<std::shared_ptr<google::protobuf::Message>()> &_req,
+           std::function<std::shared_ptr<google::protobuf::Message>()> &_res) : invoke(std::move(_invoke)),req(std::move(_req)),res(std::move(_res)) {};
+};
+
+class ControllerRouter : public Singleton<ControllerRouter> {
+public:
+    void reflect(std::string_view uri,
+                 std::function<void(std::shared_ptr<google::protobuf::Message>,std::shared_ptr<google::protobuf::Message>)> &invoke,
+                 std::function<std::shared_ptr<google::protobuf::Message>()> &req,
+                 std::function<std::shared_ptr<google::protobuf::Message>()> &res);
+
+    Method *find(std::string_view uri);
+private:
+    std::unordered_map<std::string_view,Method> methods;
+
 };
 
 #endif //_ROUTER_H_

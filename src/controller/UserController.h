@@ -9,12 +9,10 @@
 #include "User.pb.h"
 
 class UserController : public Controller {
-
 public:
-    void login(LoginRequest *request,LoginResponse *response);
-    void logout(google::protobuf::Message *request,google::protobuf::Message *response);
-    void keepalive(google::protobuf::Message *request,google::protobuf::Message *response);
+    static void login(LoginRequest *request,LoginResponse *response);
+    static void logout(google::protobuf::Message *request,google::protobuf::Message *response);
+    static void keepalive(google::protobuf::Message *request,google::protobuf::Message *response);
 };
-
 
 #endif //_USERCONTROLLER_H_

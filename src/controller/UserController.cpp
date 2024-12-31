@@ -7,8 +7,7 @@
 #include "ControllerReflect.h"
 
 
-REGISTER_CLASS("user", UserController);
-REGISTER_CLASS_METHOD(UserController, login, LoginRequest, LoginResponse);
+REGISTER_CLASS_METHOD("/user/login", UserController, login, LoginRequest, LoginResponse);
 void UserController::login(LoginRequest *request,LoginResponse *response) {
     response->set_code(0);
     response->set_desc("1234");
